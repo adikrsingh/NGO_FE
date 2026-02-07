@@ -1,0 +1,15 @@
+.analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.analytics-card {
+  display: flex;
+  flex-direction: column;
+}

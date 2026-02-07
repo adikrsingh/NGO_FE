@@ -1,0 +1,15 @@
+.alert-box {
+  background: var(--card-bg);
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 32px;
+}
+
+.alert-row {
+  display: flex;
+  justify-content: space-between;
+  background: #fff1f2;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}

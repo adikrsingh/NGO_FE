@@ -1,0 +1,114 @@
+@import "./theme.css";
+
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: var(--background);
+  color: var(--text-dark);
+}
+
+h1 {
+  margin-bottom: 16px;
+}
+
+button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
+.stat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-title {
+  font-size: 14px;
+  color: #666;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.stat-subtitle {
+  font-size: 13px;
+  color: #777;
+  margin-top: 4px;
+}
+
+.stat-trend {
+  font-size: 13px;
+  color: green;
+  margin-top: 6px;
+}
+
+.stat-footer {
+  font-size: 13px;
+  color: #555;
+  margin-top: 6px;
+}
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 40px;
+  height: 40px;
+
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+/* Color variants */
+.icon-green {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.icon-blue {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.icon-purple {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+
+.icon-orange {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.icon-red {
+  background: #fdecea;
+  color: #c62828;
+}

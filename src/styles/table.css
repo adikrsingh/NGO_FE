@@ -1,0 +1,21 @@
+table {
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: 10px;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+th {
+  background: #f1f5f9;
+  color: var(--text-muted);
+}
+
+tr:hover {
+  background: #f9fafb;
+}

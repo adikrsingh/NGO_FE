@@ -1,0 +1,32 @@
+.layout {
+  display: flex;
+}
+
+.sidebar {
+  width: 240px;
+  /* background: #1e293b;    */
+  color: white;
+  padding: 20px;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+
+.sidebar h2 {
+  margin-bottom: 24px;
+}
+
+.sidebar a {
+  color: white;
+  text-decoration: none;
+  padding: 8px 0;
+}
+
+.sidebar a:hover {
+  opacity: 0.8;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  background: var(--background);
+}
