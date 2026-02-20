@@ -6,7 +6,7 @@
     SendOutlined,
     } from "@ant-design/icons";
 
-    import Pending80G from "./Pending80G";
+    // import Pending80G from "./Pending80G";
 
 
 
@@ -16,14 +16,14 @@
     export default function Pending80GPage() {
     const [summary, setSummary] = useState<Pending80GSummary | null>(null);
     const [loading, setLoading] = useState(false);
-    const { getPending80GSummary } = DonationService();
-    useEffect(() => {
-        setLoading(true);
-        getPending80GSummary()
-        .then(setSummary)
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }, []);
+    // const { getPending80GSummary } = DonationService();
+    // useEffect(() => {
+    //     setLoading(true);
+    //     getPending80GSummary()
+    //     .then(setSummary)
+    //     .catch(console.error)
+    //     .finally(() => setLoading(false));
+    // }, []);
 
     return (
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -94,7 +94,7 @@
         <Divider />
 
         {/* ===== Existing Pending80G Component ===== */}
-        <Pending80G />
+        {/* <Pending80G /> */}
         </div>
     );
     }

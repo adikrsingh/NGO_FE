@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import DonorInfoSection from "./DonorInfoSection";
 import DonationDetailsSection from "./DonationDetailsSection";
 import ComplianceSection from "./ComplianceSection";
@@ -14,35 +14,55 @@ interface CategoryAllocation {
 type Props = {
   onSubmit: (data: {
     donorId: number;
+    donorName?: string;
     amount: number;
     purpose: string;
     paymentMode: string;
     transactionId: string;
     date: string;
     categories: CategoryAllocation[];
+    complianceData: {
+      is80G: boolean;
+      deliveryMethod: string;
+    };
   }) => void;
   isSubmitting?: boolean;
 };
 
 export default function DonationForm({ onSubmit, isSubmitting }: Props) {
-  /** Core fields */
   const [donorId, setDonorId] = useState<number | null>(null);
+
+  const [resolvedDonor, setResolvedDonor] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+
+
   const [amount, setAmount] = useState(0);
   const [purpose, setPurpose] = useState("");
   const [paymentMode, setPaymentMode] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [date, setDate] = useState("");
 
-  /** Internal metadata */
   const [notes, setNotes] = useState("");
   const [assignedStaff, setAssignedStaff] = useState("");
 
-  /** Category allocations (NEW) */
   const [categoryAllocations, setCategoryAllocations] = useState<
     CategoryAllocation[]
   >([]);
 
-  /** Submit handler */
+  const [complianceData, setComplianceData] = useState({
+    is80G: false,
+    deliveryMethod: "EMAIL",
+  });
+
+  const handleComplianceChange = useCallback((data: {
+    is80G: boolean;
+    deliveryMethod: string;
+  }) => {
+    setComplianceData(data);
+  }, []);
+
   const handleSubmit = () => {
     if (!donorId) {
       alert("Please complete donor information before saving donation");
@@ -70,32 +90,39 @@ export default function DonationForm({ onSubmit, isSubmitting }: Props) {
       );
       return;
     }
+    
+
 
     onSubmit({
       donorId,
+      donorName: resolvedDonor?.name || "",
       amount,
       purpose: notes || purpose,
       paymentMode,
       transactionId,
       date,
       categories: categoryAllocations,
+      complianceData,
     });
   };
 
-  const handleDonorResolved = (resolvedDonorId: number) => {
-    setDonorId(resolvedDonorId);
+  const handleDonorResolved = (id: number, name: string) => {
+    setDonorId(id);
+    setResolvedDonor({ id, name });
   };
+
+
 
   return (
     <div className="donation-form-wrapper">
-      {/* Donor Info */}
       <DonorInfoSection
         donorId={donorId}
         setDonorId={setDonorId}
         onDonorResolved={handleDonorResolved}
       />
 
-      {/* Donation Details */}
+      {/* Donation Details Section (Amount, Purpose, Payment Info) */}
+
       <DonationDetailsSection
         amount={amount}
         setAmount={setAmount}
@@ -107,13 +134,17 @@ export default function DonationForm({ onSubmit, isSubmitting }: Props) {
         setTransactionId={setTransactionId}
         date={date}
         setDate={setDate}
-        onCategoryChange={setCategoryAllocations} 
+        onCategoryChange={setCategoryAllocations}
       />
 
-      {/* Compliance */}
-      <ComplianceSection />
+    {/* Compliance & Certification Section */}
 
-      {/* Internal Metadata */}
+      <ComplianceSection
+        onComplianceChange={handleComplianceChange}
+      />
+
+      {/* Internal Metadata Section (Notes + Staff Assignment) */}
+
       <InternalMetaSection
         assignedStaff={assignedStaff}
         setAssignedStaff={setAssignedStaff}
@@ -121,11 +152,13 @@ export default function DonationForm({ onSubmit, isSubmitting }: Props) {
         setNotes={setNotes}
       />
 
-      {/* Actions */}
+    {/* Actions at the bottom  */}
       <DonationActions
         isSubmitting={isSubmitting}
         onCancel={() => window.history.back()}
         handleSubmit={handleSubmit}
+        is80G={complianceData.is80G}
+        deliveryMethod={complianceData.deliveryMethod}
       />
     </div>
   );

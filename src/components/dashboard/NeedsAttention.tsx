@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 
 type NeedsAttentionProps = {
   pendingReceipts: number;
-  pending80G: number;
+  pendingAck: number;
 };
 
 export default function NeedsAttention({
   pendingReceipts,
-  pending80G,
+  pendingAck,
 }: NeedsAttentionProps) {
   const navigate = useNavigate();
 
@@ -20,10 +20,10 @@ export default function NeedsAttention({
       route: "/pending-receipts",
     },
     {
-      label: "80G certificates pending",
-      count: pending80G,
+      label: "Letter of Acknowledgement pending",
+      count: pendingAck,
       type: "error",
-      route: "/pending-80g",
+      route: "/pending-ack",
     },
     {
       label: "Event reconciliation pending",

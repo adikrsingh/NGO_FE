@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -10,7 +10,7 @@ import {
   UserAddOutlined,
   BankOutlined,
   SettingOutlined,
-  TagsOutlined, 
+  TagsOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu, Typography, Button, Space } from "antd";
 import type { MenuProps } from "antd";
@@ -18,45 +18,105 @@ import dayjs from "dayjs";
 
 const { Header, Content, Sider } = Layout;
 
-/** ================= SIDEBAR MENU ================= */
-const menuItems: MenuProps["items"] = [
-  { key: "/", icon: <DashboardOutlined />, label: "Dashboard" },
-  { key: "/donors", icon: <TeamOutlined />, label: "Donors" },
-  { key: "/donations", icon: <DollarOutlined />, label: "Donations" },
-  { key: "/analytics", icon: <BarChartOutlined />, label: "Analytics" },
-  {key: "/reconcile",icon: <BankOutlined />,label: "Bank Reconciliation"},
-  
-  { key: "admin",icon: <SettingOutlined />, label: "Admin / Settings",
-      children: [
-      {
-        key: "/admin/donation-categories",
-        icon: <TagsOutlined />,
-        label: "Donation Categories",
-      },
-    ],
-  },
-];
-
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
+  const role = localStorage.getItem("role") || "STAFF";
+
+  /** ================= ROLE-BASED SIDEBAR ================= */
+    const menuItems: MenuProps["items"] = [
+    { key: "/", icon: <DashboardOutlined />, label: "Dashboard" },
+    { key: "/donors", icon: <TeamOutlined />, label: "Donors" },
+    { key: "/donations", icon: <DollarOutlined />, label: "Donations" },
+    { key: "/analytics", icon: <BarChartOutlined />, label: "Analytics" },
+
+    //  STAFF Reconciliation
+    role === "STAFF"
+      ? {
+          key: "reconciliation",
+          label: "Unclaimed List",
+          icon: <BankOutlined />,
+          children: [
+            {
+              key: "/reconcile",
+              label: <Link to="/reconcile">Unclaimed</Link>,
+            },
+            {
+              key: "/my-claims",
+              label: <Link to="/my-claims">My Claims</Link>,
+            },
+          ],
+        }
+      : {
+          key: "/reconcile",
+          icon: <BankOutlined />,
+          label: "Reconciliation",
+        },
+
+    //  Actions
+    role === "STAFF"
+      ? {
+          key: "/actions",
+          icon: <SettingOutlined />,
+          label: "Actions",
+        }
+      : {
+          key: "/actions",
+          icon: <SettingOutlined />,
+          label: "Action Monitoring",
+        },
+
+    //  Admin Settings (ADMIN only)
+    role === "ADMIN" && {
+      key: "admin",
+      icon: <SettingOutlined />,
+      label: "Admin / Settings",
+      children: [
+        {
+          key: "/admin/donation-categories",
+          icon: <TagsOutlined />,
+          label: "Donation Categories",
+        },
+      ],
+    },
+  ].filter(Boolean);
+
+
   /** ================= ACTIVE MENU LOGIC ================= */
   const selectedKey =
     menuItems
-      .map((item) => String(item?.key))
+      ?.flatMap((item: any) =>
+        item.children
+          ? item.children.map((c: any) => c.key)
+          : item.key
+      )
       .find(
-        (key) =>
+        (key: string) =>
           location.pathname === key ||
           location.pathname.startsWith(`${key}/`)
       ) ?? "/";
 
-  const handleLogout = () => {
-    console.log("Logout");
-    // future:
-    // localStorage.clear();
-    // navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await fetch(
+        "https://auth-central-production.up.railway.app/authcentral/token",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ tenantName: "testthree" }),
+        }
+      );
+
+      window.location.href =
+        "https://keycloak-production-5919.up.railway.app/realms/testthree/protocol/openid-connect/logout?redirect_uri=https://tesfngo.netlify.app";
+
+      window.history.replaceState({}, document.title, "/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -72,14 +132,8 @@ function AppLayout() {
           borderBottom: "1px solid #f0f0f0",
         }}
       >
-        {/* Left section */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}
-        >
+        {/* Left */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
           <Typography.Title level={3} style={{ margin: 0 }}>
             The Earth Saviours Foundation
           </Typography.Title>
@@ -88,7 +142,7 @@ function AppLayout() {
           </Typography.Text>
         </div>
 
-        {/* Right section */}
+        {/* Right */}
         <Space size="middle">
           <Typography.Text type="secondary">
             {dayjs().format("dddd, DD MMMM YYYY")}
@@ -110,13 +164,15 @@ function AppLayout() {
             Add Donation
           </Button>
 
-          <Button
-            type="default"
-            icon={<PlusOutlined />}
-            onClick={() => navigate("/add-staff")}
-          >
-            Add Staff
-          </Button>
+          {role === "ADMIN" && (
+            <Button
+              type="default"
+              icon={<PlusOutlined />}
+              onClick={() => navigate("/add-staff")}
+            >
+              Add Staff
+            </Button>
+          )}
 
           <Button icon={<LogoutOutlined />} onClick={handleLogout}>
             Log out

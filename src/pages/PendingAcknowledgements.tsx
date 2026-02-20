@@ -6,6 +6,7 @@ import "../styles/pendingReceipts.css";
 type Donation = {
   id: number;
   donor: {
+    id: number;
     name: string;
   };
   amount: number;
@@ -16,29 +17,27 @@ type Donation = {
   ackSent?: boolean;
 };
 
-export default function PendingReceipts() {
-  const { getPendingReceiptDonations, sendAcknowledgement } =DonationService();
+export default function PendingAcknowledgements() {
+  const {
+    getPendingAcknowledgements,
+    sendAcknowledgement,
+  } = DonationService();
 
   const [data, setData] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDonation, setSelectedDonation] =
-    useState<Donation | null>(null);
-  const [showReceiptModal, setShowReceiptModal] =
-    useState(false);
   const [openActionId, setOpenActionId] =
     useState<number | null>(null);
 
-  // ---------------- Fetch Data ----------------
+  const [selectedDonation, setSelectedDonation] =
+    useState<Donation | null>(null);
+
+  const [showReceiptModal, setShowReceiptModal] =
+    useState(false);
+
   const fetchData = () => {
     setLoading(true);
-    getPendingReceiptDonations()
+    getPendingAcknowledgements()
       .then(setData)
-      .catch((err) =>
-        console.error(
-          "Failed to fetch pending receipts",
-          err
-        )
-      )
       .finally(() => setLoading(false));
   };
 
@@ -46,24 +45,10 @@ export default function PendingReceipts() {
     fetchData();
   }, []);
 
-  // ---------------- Progress Counter ----------------
   const getProgressText = (d: Donation) => {
     const receipt = d.receiptSent ? 1 : 0;
     const ack = d.ackSent ? 1 : 0;
     return `${receipt + ack}/2`;
-  };
-
-  // ---------------- Handlers ----------------
-  const handleCloseModal = () => {
-    setShowReceiptModal(false);
-    setSelectedDonation(null);
-    fetchData();
-  };
-
-  const handleSendReceipt = (donation: Donation) => {
-    setSelectedDonation(donation);
-    setShowReceiptModal(true);
-    setOpenActionId(null);
   };
 
   const handleSendAck = async (id: number) => {
@@ -72,24 +57,37 @@ export default function PendingReceipts() {
       fetchData();
       setOpenActionId(null);
     } catch (error) {
-      console.error(
-        "Failed to send acknowledgement",
-        error
-      );
+      console.error("Failed to send ack", error);
     }
+  };
+
+  const handleOpenReceiptModal = (
+    donation: Donation
+  ) => {
+    setSelectedDonation(donation);
+    setShowReceiptModal(true);
+    setOpenActionId(null);
+  };
+
+  const handleCloseModal = () => {
+    setShowReceiptModal(false);
+    setSelectedDonation(null);
+
+    // Receipt marking already handled inside modal logic
+    fetchData();
   };
 
   return (
     <div className="pending-container">
       <h2 className="page-title">
-        Donations Pending Receipt
+        Acknowledgement Pending Donations
       </h2>
 
-      {loading && <p>Loading pending receipts...</p>}
+      {loading && <p>Loading...</p>}
 
       {!loading && data.length === 0 && (
         <div className="empty-box">
-          🎉 No pending receipts
+          🎉 No pending acknowledgements
         </div>
       )}
 
@@ -103,8 +101,8 @@ export default function PendingReceipts() {
                 <th>Date</th>
                 <th>Mode</th>
                 <th>Status</th>
-                <th>LOA</th>
-                <th>Action</th>
+                <th>Receipt</th>
+                <th>Progress</th>
               </tr>
             </thead>
 
@@ -113,7 +111,7 @@ export default function PendingReceipts() {
                 const progress =
                   getProgressText(donation);
                 const isHalf =
-                  donation.ackSent === true;
+                  donation.receiptSent === true;
 
                 return (
                   <tr key={donation.id}>
@@ -143,7 +141,7 @@ export default function PendingReceipts() {
                     </td>
 
                     <td>
-                      {donation.ackSent
+                      {donation.receiptSent
                         ? "✅ Sent"
                         : "❌ Not Sent"}
                     </td>
@@ -171,11 +169,24 @@ export default function PendingReceipts() {
                         {openActionId ===
                           donation.id && (
                           <div className="action-dropdown">
+                            {/* ACK - Always pending on this page */}
+                            <button
+                              className="btn-modern secondary"
+                              onClick={() =>
+                                handleSendAck(
+                                  donation.id
+                                )
+                              }
+                            >
+                              📨 Send Acknowledgement
+                            </button>
+
+                            {/* RECEIPT */}
                             {!donation.receiptSent && (
                               <button
                                 className="btn-modern primary"
                                 onClick={() =>
-                                  handleSendReceipt(
+                                  handleOpenReceiptModal(
                                     donation
                                   )
                                 }
@@ -184,24 +195,9 @@ export default function PendingReceipts() {
                               </button>
                             )}
 
-                            {!donation.ackSent && (
-                              <button
-                                className="btn-modern secondary"
-                                onClick={() =>
-                                  handleSendAck(
-                                    donation.id
-                                  )
-                                }
-                              >
-                                📨 Send Acknowledgement
-                              </button>
-                            )}
-
-                            {donation.ackSent && (
+                            {donation.receiptSent && (
                               <div className="sent-label">
-                                ✅
-                                Acknowledgement
-                                Sent
+                                ✅ Receipt Sent
                               </div>
                             )}
                           </div>
@@ -216,13 +212,13 @@ export default function PendingReceipts() {
         </div>
       )}
 
-      {/* -------- Receipt Modal -------- */}
+      {/* Receipt Modal */}
       {showReceiptModal &&
         selectedDonation && (
           <ReceiptModal
             visible={showReceiptModal}
             donorName={
-              selectedDonation.donor?.name
+              selectedDonation.donor?.name || "Donor"
             }
             amount={
               selectedDonation.amount

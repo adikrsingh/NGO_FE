@@ -117,7 +117,9 @@ export default function AddStaff() {
               />
             </div>
 
-            <div className="staff-form-group">
+            {/* Comenting out PAN as client dont need currently */}
+
+            {/* <div className="staff-form-group">
               <label>PAN *</label>
               <input
                 value={pan}
@@ -136,7 +138,7 @@ export default function AddStaff() {
                   {panError}
                 </small>
               )}
-            </div>
+            </div> */}
 
             <div className="staff-form-group">
               <label>Designation *</label>

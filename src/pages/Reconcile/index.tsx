@@ -6,329 +6,331 @@ import {
   Space,
   Button,
   Card,
-  Upload,
+  Modal,
+  Input,
   message,
-  Alert,
 } from "antd";
-import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import {
-  UploadOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  WarningOutlined,
-  LoadingOutlined,
-} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useApi } from "../../api/useApi";
-import axios from "axios";
 
 /* ================= TYPES ================= */
 
-type ReconciliationStatus =
-  | "UNSETTLED"
-  | "MATCHED"
-  | "SETTLED"
-  | "NOT_FOUND";
+type ReconciliationStatus = "UNCLAIMED" | "SETTLED";
 
 type ReconciledTransaction = {
   id: number;
   transactionId: string;
   transactionAmount: number;
-  reconciliationStatus: ReconciliationStatus;
+  transactionDate: string;
+  transactionMode: string;
+  claimsCount: number;
 };
 
-/* ============== STATUS GROUPS ============== */
-
-const STATUS_GROUPS: Record<
-  "DEFAULT" | "MATCHED" | "SETTLED",
-  ReconciliationStatus[]
-> = {
-  DEFAULT: ["UNSETTLED", "NOT_FOUND"],
-  MATCHED: ["MATCHED"],
-  SETTLED: ["SETTLED"],
+type Donation = {
+  id: number;
+  amount: number;
+  donationDate: string;
+  transactionId: string;
+  donationCampaign?: string;
+  donationSource?: string;
+  donor: {
+    name: string;
+  };
 };
 
-export default function Reconcile() {
+/* ================= HARD CODE STAFF ================= */
+
+const staffId = 2;
+
+export default function Reconciliation() {
   const { baseApi } = useApi();
   const api = baseApi();
 
+  const [messageApi, contextHolder] = message.useMessage();
+
+  /* ================= STATE ================= */
+
   const [data, setData] = useState<ReconciledTransaction[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
 
-  // 🔥 Processing banner
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
 
-  const [activeView, setActiveView] =
-    useState<"DEFAULT" | "MATCHED" | "SETTLED">("DEFAULT");
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<ReconciledTransaction | null>(null);
 
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [selectedDonation, setSelectedDonation] =
+    useState<Donation | null>(null);
 
-  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
-  /* ================= FETCH DATA ================= */
+  const [donationPage, setDonationPage] = useState(0);
+  const [donationPageSize] = useState(5);
+  const [donationTotal, setDonationTotal] = useState(0);
 
-  const fetchData = async () => {
+  /* ================= FETCH RECONCILIATION ================= */
+
+  const fetchReconciliation = async (pageNumber = 0) => {
     try {
       setLoading(true);
-      const statuses = STATUS_GROUPS[activeView].join(",");
+
       const res = await api.get(
-        `/reconciliation/transactions?status=${statuses}`
+        `/reconciliation/transactions/staff/${staffId}?page=${pageNumber}&size=${pageSize}`
       );
-      setData(res.data || []);
-      setSelectedRowKeys([]);
-      setIsProcessing(false);
-    } catch {
-      message.error("Failed to load reconciliation data");
+
+      setData(res.data.content || []);
+      setTotal(res.data.totalElements || 0);
+      setPage(pageNumber);
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.detailedMessage ||
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to load reconciliation data";
+
+      messageApi.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    setCurrentPage(1);
-  }, [activeView]);
+    fetchReconciliation();
+  }, []);
 
-  /* ================= FILE UPLOAD ================= */
+  /* ================= FETCH DONATIONS ================= */
 
-  const handleUpload = async () => {
-    if (!file) {
-      message.warning("Please select a bank statement file");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
+  const fetchDonations = async (page = 0) => {
     try {
-      setUploading(true);
-      setIsProcessing(true);
+      setSearching(true);
 
-      await api.post("/batch/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      message.success(
-        "Bank statement uploaded. Processing has started."
+      const res = await api.get(
+        `/donations/search?staffId=${staffId}&keyword=${searchKeyword || ""}&page=${page}&size=${donationPageSize}`
       );
 
-      setFile(null);
+      setDonations(res.data.content || []);
+      setDonationTotal(res.data.totalElements || 0);
+      setDonationPage(page);
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.detailedMessage ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to search donations";
 
-      setTimeout(() => {
-        fetchData();
-      }, 3000);
-
-    } catch (error: any) {
-
-      // 🔥 EXTRACT BACKEND MESSAGE PROPERLY
-      let errorMsg = "Failed to upload bank statement";
-
-      if (axios.isAxiosError(error)) {
-        errorMsg =
-          error.response?.data?.message ||
-          error.response?.data?.error ||
-          error.response?.data ||
-          errorMsg;
-      }
-
-      message.error(errorMsg);
-      setIsProcessing(false);
-
+      messageApi.error(errorMessage);
     } finally {
-      setUploading(false);
+      setSearching(false);
     }
   };
 
-  /* ================= BULK MANUAL SETTLE ================= */
+  /* ================= OPEN CLAIM MODAL ================= */
 
-  const manuallySettleBulk = async () => {
-    if (selectedRowKeys.length === 0) return;
+  const openClaimModal = (record: ReconciledTransaction) => {
+    setSelectedTransaction(record);
+    setClaimModalOpen(true);
+    setSelectedDonation(null);
+    setSearchKeyword("");
+    fetchDonations(0);
+  };
+
+  /* ================= CONFIRM CLAIM ================= */
+
+  const confirmClaim = async () => {
+    if (!selectedDonation || !selectedTransaction) {
+      messageApi.warning("Please select a donation");
+      return;
+    }
 
     try {
+      setClaiming(true);
+
       await api.put(
-        "/reconciliation/transactions/settle",
-        selectedRowKeys
+        `/donations/claim/${selectedDonation.id}/${staffId}?reconciliationId=${selectedTransaction.id}`
       );
-      message.success(
-        `Manually settled ${selectedRowKeys.length} record(s)`
+
+      messageApi.success(
+        "Transaction claimed successfully. Pending admin approval."
       );
-      fetchData();
-    } catch {
-      message.error("Failed to settle selected records");
+
+      setClaimModalOpen(false);
+      fetchReconciliation(page);
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.detailedMessage ||
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to claim transaction";
+
+      messageApi.error(errorMessage);
+    } finally {
+      setClaiming(false);
     }
   };
 
   /* ================= STATUS TAG ================= */
 
   const renderStatus = (status: ReconciliationStatus) => {
-    switch (status) {
-      case "MATCHED":
-        return (
-          <Tag color="green" icon={<CheckCircleOutlined />}>
-            Matched (Auto)
-          </Tag>
-        );
-      case "SETTLED":
-        return (
-          <Tag color="blue" icon={<CheckCircleOutlined />}>
-            Settled (Manual)
-          </Tag>
-        );
-      case "NOT_FOUND":
-        return (
-          <Tag color="red" icon={<WarningOutlined />}>
-            Not Found
-          </Tag>
-        );
-      default:
-        return (
-          <Tag color="orange" icon={<ExclamationCircleOutlined />}>
-            Unsettled
-          </Tag>
-        );
+    if (status === "SETTLED") {
+      return <Tag color="green">Settled</Tag>;
     }
+
+    return (
+      <Tag color="orange" icon={<ExclamationCircleOutlined />}>
+        Unclaimed
+      </Tag>
+    );
   };
 
-  /* ================= TABLE COLUMNS ================= */
+  /* ================= RECONCILIATION TABLE ================= */
 
-  const columns: ColumnsType<ReconciledTransaction> = [
+  const reconciliationColumns: ColumnsType<ReconciledTransaction> = [
     {
       title: "Transaction ID",
       dataIndex: "transactionId",
-      render: (text) => <strong>{text}</strong>,
+    },
+    {
+      title: "Date",
+      dataIndex: "transactionDate",
     },
     {
       title: "Amount (₹)",
       dataIndex: "transactionAmount",
-      render: (amt) => `₹${amt.toLocaleString()}`,
+      render: (amt: number) =>
+        amt ? `₹${amt.toLocaleString()}` : "₹0",
     },
     {
-      title: "Status",
-      dataIndex: "reconciliationStatus",
-      render: renderStatus,
+      title: "Claims",
+      dataIndex: "claimsCount",
+      render: (count: number) => (
+        <Tag color={count > 0 ? "blue" : "default"}>
+          {count} {count === 1 ? "Claim" : "Claims"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Mode",
+      dataIndex: "transactionMode",
+    },
+    {
+      title: "Action",
+      render: (_, record) => (
+        <Button
+          type="primary"
+          size="small"
+          onClick={() => openClaimModal(record)}
+        >
+          Claim
+        </Button>
+      ),
     },
   ];
 
-  /* ================= ROW SELECTION ================= */
+  /* ================= DONATION TABLE ================= */
 
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys: React.Key[]) =>
-      setSelectedRowKeys(keys as number[]),
-    getCheckboxProps: (record: ReconciledTransaction) => ({
-      disabled:
-        record.reconciliationStatus === "SETTLED" ||
-        record.reconciliationStatus === "MATCHED",
-    }),
-  };
 
-  /* ================= PAGINATION ================= */
-
-  const paginationConfig: TablePaginationConfig = {
-    current: currentPage,
-    pageSize,
-    total: data.length,
-    showSizeChanger: true,
-    pageSizeOptions: ["10", "20", "50", "100"],
-    onChange: (page, size) => {
-      setCurrentPage(page);
-      if (size) setPageSize(size);
+  const donationColumns = [
+    {
+      title: "Donor Name",
+      dataIndex: ["donor", "name"],
     },
-  };
+    {
+      title: "Amount (₹)",
+      dataIndex: "amount",
+      render: (amt: number) =>
+        amt ? `₹${amt.toLocaleString()}` : "₹0",
+    },
+    {
+      title: "Date",
+      dataIndex: "donationDate",
+    },
+    {
+      title: "Transaction ID",
+      dataIndex: "transactionId",
+    },
+    {
+      title: "Mode of Payment",
+      dataIndex: "donationSource",
+    },
+  ];
+
+  /* ================= UI ================= */
 
   return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <div>
-        <Typography.Title level={2}>Bank Reconciliation</Typography.Title>
-        <Typography.Text type="secondary">
-          Upload bank statements, review auto matches, and manually settle
-          unmatched transactions.
-        </Typography.Text>
-      </div>
+    <>
+      {contextHolder}
 
-      {isProcessing && (
-        <Alert
-          type="info"
-          showIcon
-          icon={<LoadingOutlined />}
-          message="We’re processing your bank statement"
-          description="This may take a few moments. The data will refresh automatically."
-        />
-      )}
-
-      <Card title="Upload Bank Statement">
-        <Space>
-          <Upload
-            accept=".xlsx,.xls,.csv"
-            maxCount={1}
-            beforeUpload={(file) => {
-              setFile(file);
-              return false;
-            }}
-          >
-            <Button icon={<UploadOutlined />} disabled={uploading}>
-              Select File
-            </Button>
-          </Upload>
-
-          <Button
-            type="primary"
-            loading={uploading}
-            onClick={handleUpload}
-          >
-            Upload & Process
-          </Button>
-        </Space>
-      </Card>
-
-      <Space>
-        <Button
-          type={activeView === "DEFAULT" ? "primary" : "default"}
-          onClick={() => setActiveView("DEFAULT")}
-        >
-          Unsettled / Not Found
-        </Button>
-
-        <Button
-          type={activeView === "MATCHED" ? "primary" : "default"}
-          onClick={() => setActiveView("MATCHED")}
-        >
-          Matched (Auto)
-        </Button>
-
-        <Button
-          type={activeView === "SETTLED" ? "primary" : "default"}
-          onClick={() => setActiveView("SETTLED")}
-        >
-          Settled (Manual)
-        </Button>
-      </Space>
-
-      <Card>
+      <Card title="Unclaimed Transactions">
         <Table
           rowKey="id"
           loading={loading}
-          columns={columns}
+          columns={reconciliationColumns}
           dataSource={data}
-          rowSelection={rowSelection}
-          pagination={paginationConfig}
+          pagination={{
+            current: page + 1,
+            pageSize: pageSize,
+            total: total,
+            onChange: (newPage) =>
+              fetchReconciliation(newPage - 1),
+          }}
         />
       </Card>
 
-      <Card>
-        <Space style={{ justifyContent: "flex-end", width: "100%" }}>
-          <Button
-            type="primary"
-            disabled={selectedRowKeys.length === 0}
-            onClick={manuallySettleBulk}
-          >
-            Manually Settle {selectedRowKeys.length} Record
-            {selectedRowKeys.length !== 1 ? "s" : ""}
-          </Button>
+      <Modal
+        title="Claim Transaction"
+        open={claimModalOpen}
+        onOk={confirmClaim}
+        onCancel={() => setClaimModalOpen(false)}
+        confirmLoading={claiming}
+        okButtonProps={{ disabled: !selectedDonation }}
+        width={900}
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Card size="small">
+            <Typography.Text strong>Bank Amount:</Typography.Text>{" "}
+            ₹{selectedTransaction?.transactionAmount?.toLocaleString()}
+            <br />
+            <Typography.Text strong>Bank Date:</Typography.Text>{" "}
+            {selectedTransaction?.transactionDate}
+          </Card>
+
+          <Input.Search
+            placeholder="Search by donor name or amount"
+            enterButton="Search"
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            onSearch={() => fetchDonations(0)}
+            loading={searching}
+          />
+
+          <Table
+            rowKey="id"
+            dataSource={donations}
+            loading={searching}
+            pagination={{
+              current: donationPage + 1,
+              pageSize: donationPageSize,
+              total: donationTotal,
+              onChange: (newPage) =>
+                fetchDonations(newPage - 1),
+            }}
+            rowSelection={{
+              type: "radio",
+              onChange: (_, selectedRows) =>
+                setSelectedDonation(selectedRows[0]),
+            }}
+            columns={donationColumns}
+          />
         </Space>
-      </Card>
-    </Space>
+      </Modal>
+    </>
   );
 }

@@ -1,10 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "../common/Card";
-import FormRow from "../common/FormRow";
 
-const ComplianceSection = () => {
-  const [is80G, setIs80G] = useState(false);
+interface ComplianceSectionProps {
+  onComplianceChange?: (data: {
+    is80G: boolean;
+    deliveryMethod: string;
+  }) => void;
+}
+
+const ComplianceSection = ({ onComplianceChange }: ComplianceSectionProps) => {
+  const [is80G, setIs80G] = useState(true);
   const [deliveryMethod, setDeliveryMethod] = useState("EMAIL");
+
+  // Inform parent whenever compliance changes
+ useEffect(() => {
+    onComplianceChange?.({
+      is80G,
+      deliveryMethod,
+    });
+  }, [is80G, deliveryMethod]);
+
 
   return (
     <Card
@@ -14,31 +29,29 @@ const ComplianceSection = () => {
       {/* 80G Toggle */}
       <div className="toggle-row">
         <div>
-          <p className="label">
-            80G Certificate Applicable
-          </p>
+          <p className="label">80G Certificate Applicable</p>
           <p className="helper-text">
             Issue an 80G tax exemption certificate for this donation
           </p>
         </div>
 
-        <label className="switch">
+        {/* <label className="switch">
           <input
             type="checkbox"
             checked={is80G}
             onChange={() => setIs80G(!is80G)}
           />
           <span className="slider" />
-        </label>
+        </label> */}
       </div>
 
-      {/* Certificate Status */}
-      <div className="status-row">
+      {/* Certificate Status -  we do not need this as of now, we can show this in the donation details page when we have that ready */}
+      {/* <div className="status-row">
         <span className="label">Certificate Status:</span>
         <span className={`status-pill ${is80G ? "pending" : "na"}`}>
           {is80G ? "Applicable" : "Not Applicable"}
         </span>
-      </div>
+      </div> */}
 
       {/* Delivery Method (ONLY when 80G ON) */}
       {is80G && (
@@ -67,30 +80,21 @@ const ComplianceSection = () => {
               />
               Physical Copy
             </label>
+
+            
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="delivery"
+                value="BOTH"
+                checked={deliveryMethod === "BOTH"}
+                onChange={() => setDeliveryMethod("BOTH")}
+              />
+              Both
+            </label>
           </div>
         </div>
       )}
-
-      {/* Supporting Document */}
-      {/* <div className="form-block full-width">
-        <label>Upload Supporting Document</label>
-
-        <label htmlFor="donation-proof" className="upload-box">
-          <span className="upload-title">Click to upload </span>
-          <span className="upload-subtitle">
-             PDF (max 5MB)
-          </span>
-        </label>
-
-        <input
-          id="donation-proof"
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          hidden
-          onChange={(e) => console.log(e.target.files[0])}
-      />
-      </div> */}
-
     </Card>
   );
 };

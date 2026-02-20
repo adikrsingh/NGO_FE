@@ -1,0 +1,237 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: #fff;
+  width: 950px;
+  max-height: 95vh;
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+}
+
+  /* .receipt-container {
+    border: 2px solid #000;
+    padding: 35px;
+    font-family: "Times New Roman", serif;
+    color: #333;
+    position: relative;
+    background: white;
+  } */
+
+.receipt-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.08;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.receipt-watermark img {
+  width: 500px;
+  max-width: 80%;
+}
+
+.receipt-container {
+  position: relative;
+  z-index: 1;
+}
+
+.receipt-header {
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #000;
+}
+
+.receipt-header h2 {
+  color: #c0392b;
+  font-size: 24px;
+  margin: 0 0 8px 0;
+}
+
+.receipt-ref-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+.receipt-info-row {
+  margin: 15px 0;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.receipt-info-row label {
+  min-width: 200px;
+  font-weight: bold;
+}
+
+.receipt-value {
+  border-bottom: 1px dotted #999;
+  padding: 6px 0;
+  min-height: 22px;
+  flex: 1;
+}
+
+.receipt-info-row input {
+  flex: 1;
+  padding: 6px 8px;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.pdf-amount-box {
+  border: 2px solid #000;
+  padding: 20px;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  background: #f5f5f5;
+  min-width: 200px;
+}
+
+.pdf-tax-section {
+  border: 1px solid #000;
+  padding: 20px;
+  margin: 25px 0;
+  background: #f5f5f5;
+}
+
+.pdf-tax-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.pdf-signature {
+  margin-top: 50px;
+  text-align: right;
+}
+
+.pdf-signature-line {
+  margin-top: 60px;
+  border-top: 1px solid #000;
+  padding-top: 10px;
+}
+
+.modal-actions {
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #ddd;
+  background: #fafafa;
+}
+
+.modal-left {
+  font-size: 14px;
+  color: #555;
+}
+
+.modal-right {
+  display: flex;
+  gap: 10px;
+}
+
+@media print {
+
+  body {
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .modal-overlay {
+    position: static !important;
+    background: white !important;
+  }
+
+  .modal-box {
+    box-shadow: none !important;
+    height: auto !important;
+  }
+
+  .modal-actions {
+    display: none !important;
+  }
+
+  .receipt-scroll {
+    overflow: visible !important;
+  }
+
+  input {
+    display: none !important;
+  }
+
+  img {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+  .signature-section {
+    margin-top: 40px;
+  }
+
+  .signature-input {
+    margin-bottom: 10px;
+  }
+
+  .signature-input input {
+    padding: 6px 8px;
+    width: 250px;
+  }
+
+  .pdf-signature {
+    margin-top: 40px;
+    text-align: right;
+  }
+
+  .typed-signature {
+    font-family: "Brush Script MT", cursive;
+    font-size: 22px;
+    margin-bottom: 5px;
+  }
+
+  .pdf-signature-line {
+    border-top: 1px solid #000;
+    padding-top: 8px;
+    font-size: 12px;
+  }
+
+  @media print {
+    .signature-input {
+      display: none !important;
+    }
+  }  
+
+  .pdf-tax-section h4 {
+    text-align: center;
+  }

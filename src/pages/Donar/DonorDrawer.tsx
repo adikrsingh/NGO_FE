@@ -1,12 +1,41 @@
 import { Tabs, Descriptions, Table, Tag } from "antd";
 import { ActiveDonor } from "../../types/ActiveDonor";
-import { donorHistoryMock } from "./mockDonorHistory";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { useApi } from "../../api/useApi";
 
 interface Props {
   donor: ActiveDonor;
 }
 
+type HistoryItem = {
+  donationAmount: number;
+  donationDate: string;
+  campaign: string;
+  paymentMethod: string;
+  status: string;
+};
+
 export default function DonorDrawer({ donor }: Props) {
+
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  const fetchHistory = async () => {
+
+    const res = await axios.get(
+      useApi().baseApi().defaults.baseURL +
+        `/donors/${donor.id}/history`
+      );
+    console.log("Fetched history:", res.data);
+    
+    setHistory(res.data);
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [donor.id]);
+
+      
   return (
     <>
       <h2 style={{ marginBottom: 4 }}>{donor.name}</h2>
@@ -40,21 +69,34 @@ export default function DonorDrawer({ donor }: Props) {
               <Table
                 size="small"
                 pagination={false}
-                dataSource={donorHistoryMock}
-                rowKey="id"
+                dataSource={history}
+                rowKey={(record, index) => index}
                 columns={[
                   {
                     title: "Date",
-                    dataIndex: "date",
+                    dataIndex: "donationDate",
                   },
                   {
                     title: "Amount",
-                    dataIndex: "amount",
+                    dataIndex: "donationAmount",
                     render: (amt) => `₹${amt.toLocaleString()}`,
                   },
                   {
-                    title: "Mode",
-                    dataIndex: "mode",
+                    title: "Campaign",
+                    dataIndex: "campaign",
+                  },
+                  {
+                    title: "Payment Method",
+                    dataIndex: "paymentMethod",
+                  },
+                  {
+                    title: "Status",
+                    dataIndex: "status",
+                    render: (status) => (
+                      <Tag color={status === "CREATED" ? "blue" : "green"}>
+                        {status}
+                      </Tag>
+                    ),
                   },
                 ]}
               />

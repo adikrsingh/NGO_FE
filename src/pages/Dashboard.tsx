@@ -224,7 +224,7 @@
             <div className="grid-2">
               <NeedsAttention
                 pendingReceipts={staffDashboard?.receiptNotIssued ?? 0}
-                pending80G={staffDashboard?.nonIssueCount ?? 0}
+                pendingAck={staffDashboard?.pendingAcknowledgements ?? 0}
               />
               <UserContext />
             </div>

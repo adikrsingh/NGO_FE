@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Card, Typography, Row, Col } from "antd";
+import { useEffect, useState, useMemo } from "react";
+import { Card, Typography, Row, Col, Spin } from "antd";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,11 +11,11 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { Line, Bar, Pie } from "react-chartjs-2";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
 import dayjs from "dayjs";
 import { useApi } from "../api/useApi";
 import { formatINRCompact } from "../utils/currency";
-import "../styles/Analytics.css";
+import "../styles/analytics.css";
 
 ChartJS.register(
   CategoryScale,
@@ -30,24 +30,29 @@ ChartJS.register(
 
 /* ================= TYPES ================= */
 
-type Donation = {
-  amount: number;
-  status: string;
-  donationDate: string;
-  donationSource: string;
-  staff?: {
-    name: string;
-  };
+type AdminAnalytics = {
+  totalDonations: number;
+  todayTotal: number;
+  monthTotal: number;
+  paidAmount: number;
+  pendingAmount: number;
+  dailyDonations: Record<string, number>;
+  sourceSplit: Record<string, number>;
+  staffContribution: Record<string, number>;
 };
 
-type StaffDonationResponse = {
+type StaffAnalytics = {
   staffId: number;
   staffName: string;
   totalDonations: number;
   dailyDonations: Record<string, number>;
+  monthlyDonations: Record<string, number>;
+  pendingAcknowledgements: number;
+  receiptIssued: number;
+  receiptNotIssued: number;
+  paidAmount: number;
+  pendingAmount: number;
 };
-
-const STAFF_ID = 2;
 
 /* ================= COMPONENT ================= */
 
@@ -55,94 +60,94 @@ export default function Analytics() {
   const { baseApi } = useApi();
   const api = baseApi();
 
-  const [donations, setDonations] = useState<Donation[]>([]);
-  const [staffData, setStaffData] =
-    useState<StaffDonationResponse | null>(null);
+  const role = localStorage.getItem("role");
+  const isAdmin = role === "ADMIN";
 
-  /* ===== Fetch all donations ===== */
+  const [adminData, setAdminData] = useState<AdminAnalytics | null>(null);
+  const [staffData, setStaffData] = useState<StaffAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const STAFF_ID = 2; // replace later with logged-in user
+
+  /* ================= FETCH ================= */
+
   useEffect(() => {
-    api.get("/donations").then((res) => {
-      setDonations(res.data || []);
-    });
-  }, []);
-
-  /* ===== Fetch staff-based analytics ===== */
-  useEffect(() => {
-    api.get(`/donations/staff/${STAFF_ID}`).then((res) => {
-      setStaffData(res.data);
-    });
-  }, []);
-
-  /* ================= KPIs ================= */
-
-  const today = dayjs().format("YYYY-MM-DD");
-  const currentMonth = dayjs().format("YYYY-MM");
-
-  let todayTotal = 0;
-  let monthTotal = 0;
-  let paidTotal = 0;
-  let pendingTotal = 0;
-
-  donations.forEach((d) => {
-    if (d.donationDate === today) {
-      todayTotal += d.amount;
-    }
-
-    if (d.donationDate.startsWith(currentMonth)) {
-      monthTotal += d.amount;
-    }
-
-    if (d.status === "PAID" || d.status === "SETTLED") {
-      paidTotal += d.amount;
-    } else {
-      pendingTotal += d.amount;
-    }
-  });
-
-  /* ================= PAID vs PENDING ================= */
-
-  const paidPendingData = [paidTotal, pendingTotal];
- 
-  /* ================= SOURCE SPLIT ================= */
-
-  const sourceMap: Record<string, number> = {};
-  donations.forEach((d) => {
-    sourceMap[d.donationSource] =
-      (sourceMap[d.donationSource] || 0) + d.amount;
-  });
-
-  /* ================= TOP 5 STAFF ================= */
-
-  const staffMap: Record<string, number> = {};
-  donations.forEach((d) => {
-    if (!d.staff?.name) return;
-    staffMap[d.staff.name] =
-      (staffMap[d.staff.name] || 0) + d.amount;
-  });
-
-  const topStaff = Object.entries(staffMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  const staffLabels = topStaff.map(([name]) => name);
-  const staffAmounts = topStaff.map(([, amount]) => amount);
-
-  /* ================= DONATION TREND (STAFF API) ================= */
-
-  const trendLabels: string[] = [];
-  const trendAmounts: number[] = [];
-
-  if (staffData) {
-    Object.entries(staffData.dailyDonations).forEach(
-      ([date, amount]) => {
-        if (dayjs(date).isAfter(dayjs().subtract(30, "day"))) {
-          trendLabels.push(dayjs(date).format("MMM D"));
-          trendAmounts.push(amount);
+    const fetchData = async () => {
+      try {
+        if (isAdmin) {
+          const res = await api.get("/analytics/admin");
+          setAdminData(res.data);
+        } else {
+          const res = await api.get(`/donations/staff/${STAFF_ID}`);
+          setStaffData(res.data);
         }
+      } finally {
+        setLoading(false);
       }
-    );
-  }
+    };
 
+    fetchData();
+  }, []);
+
+  /* ================= DERIVED VALUES ================= */
+
+  const paid = isAdmin
+    ? adminData?.paidAmount || 0
+    : staffData?.paidAmount || 0;
+
+  const pending = isAdmin
+    ? adminData?.pendingAmount || 0
+    : staffData?.pendingAmount || 0;
+
+  const todayValue = isAdmin
+    ? adminData?.todayTotal || 0
+    : 0;
+
+  const monthValue = isAdmin
+    ? adminData?.monthTotal || 0
+    : staffData?.totalDonations || 0;
+
+  /* ================= TREND ================= */
+
+  const trendLabels = useMemo(() => {
+    const data = isAdmin
+      ? adminData?.dailyDonations
+      : staffData?.dailyDonations;
+
+    if (!data) return [];
+
+    return Object.keys(data).map((date) =>
+      dayjs(date).format("MMM D")
+    );
+  }, [adminData, staffData]);
+
+  const trendAmounts = useMemo(() => {
+    const data = isAdmin
+      ? adminData?.dailyDonations
+      : staffData?.dailyDonations;
+
+    if (!data) return [];
+
+    return Object.values(data);
+  }, [adminData, staffData]);
+
+  /* ================= ADMIN ONLY DATA ================= */
+
+  const sourceLabels = adminData
+    ? Object.keys(adminData.sourceSplit)
+    : [];
+
+  const sourceValues = adminData
+    ? Object.values(adminData.sourceSplit)
+    : [];
+
+  const staffLabels = adminData
+    ? Object.keys(adminData.staffContribution)
+    : [];
+
+  const staffAmounts = adminData
+    ? Object.values(adminData.staffContribution)
+    : [];
 
   const currencyTooltip = {
     callbacks: {
@@ -150,70 +155,72 @@ export default function Analytics() {
     },
   };
 
-
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", marginTop: 80 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="analytics-page">
-      <Typography.Title level={2}>Analytics</Typography.Title>
-      <Typography.Text type="secondary">
-        Donation performance and operational insights
-      </Typography.Text>
+      <Typography.Title level={2}>
+        {isAdmin ? "Organization Analytics" : "My Analytics"}
+      </Typography.Title>
 
+      {/* ================= KPI CARDS ================= */}
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} md={6}>
-          <Card title="Today">
-            <Typography.Title level={4}>
-              {formatINRCompact(todayTotal)}
+          <Card title="Today" className="analytics-card">
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {formatINRCompact(todayValue)}
             </Typography.Title>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
-          <Card title="This Month">
-            <Typography.Title level={4}>
-              {formatINRCompact(monthTotal)}
+          <Card title="This Month" className="analytics-card">
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {formatINRCompact(monthValue)}
             </Typography.Title>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
-          <Card title="Paid">
-            <Typography.Title level={4}>
-              {formatINRCompact(paidTotal)}
+          <Card title="Paid" className="analytics-card">
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {formatINRCompact(paid)}
             </Typography.Title>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
-          <Card title="Pending">
-            <Typography.Title level={4}>
-              {formatINRCompact(pendingTotal)}
+          <Card title="Pending" className="analytics-card">
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {formatINRCompact(pending)}
             </Typography.Title>
           </Card>
         </Col>
       </Row>
 
-      {/* ===== CHARTS ===== */}
+      {/* ================= CHARTS ================= */}
+
       <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
-        {/* Donation Trend */}
+        {/* Trend */}
         <Col xs={24} lg={14}>
-          <Card title="Donation Trend (Last 30 Days)">
-            <div style={{ height: 300 }}>
+          <Card
+            title="Donation Trend (Last 30 Days)"
+            className="analytics-chart-card"
+          >
+            <div className="analytics-chart-wrapper">
               <Line
                 options={{
                   maintainAspectRatio: false,
                   plugins: {
                     legend: { display: false },
                     tooltip: currencyTooltip,
-                  },
-                  scales: {
-                    y: {
-                      ticks: {
-                        callback: (v) =>
-                          formatINRCompact(Number(v)),
-                      },
-                    },
                   },
                 }}
                 data={{
@@ -233,33 +240,27 @@ export default function Analytics() {
           </Card>
         </Col>
 
-        {/* Paid vs Pending */}
+        {/* Paid vs Pending (Both Roles) */}
         <Col xs={24} lg={10}>
-          <Card title="Paid vs Pending">
-            <div style={{ height: 300 }}>
+          <Card
+            title="Paid vs Pending"
+            className="analytics-chart-card"
+          >
+            <div className="analytics-chart-wrapper">
               <Bar
                 options={{
                   maintainAspectRatio: false,
                   plugins: {
                     legend: { display: false },
                     tooltip: currencyTooltip,
-                  },
-                  scales: {
-                    y: {
-                      ticks: {
-                        callback: (v) =>
-                          formatINRCompact(Number(v)),
-                      },
-                    },
                   },
                 }}
                 data={{
                   labels: ["Paid", "Pending"],
                   datasets: [
                     {
-                      data: paidPendingData,
+                      data: [paid, pending],
                       backgroundColor: ["#52c41a", "#faad14"],
-                      borderRadius: 6,
                     },
                   ],
                 }}
@@ -268,70 +269,74 @@ export default function Analytics() {
           </Card>
         </Col>
 
-        {/* Source Split */}
-        <Col xs={24} lg={12}>
-          <Card title="Donation Source Split">
-            <div style={{ height: 300 }}>
-              <Pie
-                options={{
-                  plugins: {
-                    tooltip: currencyTooltip,
-                  },
-                }}
-                data={{
-                  labels: Object.keys(sourceMap),
-                  datasets: [
-                    {
-                      data: Object.values(sourceMap),
-                      backgroundColor: [
-                        "#1677ff",
-                        "#52c41a",
-                        "#faad14",
-                        "#cf1322",
-                      ],
+        {/* Admin Only: Source Split */}
+        {isAdmin && (
+          <Col xs={24} lg={12}>
+            <Card
+              title="Donation Source Split"
+              className="analytics-chart-card"
+            >
+              <div className="analytics-chart-wrapper">
+                <Doughnut
+                  options={{
+                    plugins: {
+                      tooltip: currencyTooltip,
+                      legend: { position: "top" },
                     },
-                  ],
-                }}
-              />
-            </div>
-          </Card>
-        </Col>
-
-        {/* Top 5 Staff */}
-        <Col xs={24} lg={12}>
-          <Card title="Top 5 Staff by Contribution">
-            <div style={{ height: 300 }}>
-              <Bar
-                options={{
-                  indexAxis: "y",
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: currencyTooltip,
-                  },
-                  scales: {
-                    x: {
-                      ticks: {
-                        callback: (v) =>
-                          formatINRCompact(Number(v)),
+                    cutout: "40%",
+                  }}
+                  data={{
+                    labels: sourceLabels,
+                    datasets: [
+                      {
+                        data: sourceValues,
+                        backgroundColor: [
+                          "#1677ff",
+                          "#722ed1",
+                          "#52c41a",
+                          "#faad14",
+                          "#cf1322",
+                        ],
                       },
+                    ],
+                  }}
+                />
+              </div>
+            </Card>
+          </Col>
+        )}
+
+        {/* Admin Only: Top Staff */}
+        {isAdmin && (
+          <Col xs={24} lg={12}>
+            <Card
+              title="Top 5 Staff"
+              className="analytics-chart-card"
+            >
+              <div className="analytics-chart-wrapper">
+                <Bar
+                  options={{
+                    indexAxis: "y",
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: currencyTooltip,
                     },
-                  },
-                }}
-                data={{
-                  labels: staffLabels,
-                  datasets: [
-                    {
-                      data: staffAmounts,
-                      backgroundColor: "#0b2545",
-                      borderRadius: 6,
-                    },
-                  ],
-                }}
-              />
-            </div>
-          </Card>
-        </Col>
+                  }}
+                  data={{
+                    labels: staffLabels,
+                    datasets: [
+                      {
+                        data: staffAmounts,
+                        backgroundColor: "#0b2545",
+                      },
+                    ],
+                  }}
+                />
+              </div>
+            </Card>
+          </Col>
+        )}
       </Row>
     </div>
   );

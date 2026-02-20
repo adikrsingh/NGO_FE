@@ -118,14 +118,18 @@ function DonationList() {
       ),
     },
     {
-      title: "80G",
-      dataIndex: "form80Sent",
-      render: (v: boolean | null) => (
-        <Tag color={v ? "green" : "default"}>
-          {v === null ? "N/A" : v ? "Yes" : "No"}
-        </Tag>
-      ),
+      title: "Amount Received",
+      dataIndex: "status",
+      render: (status: string, record: DonationType) => {
+        const received = status !== DonationStatus.CREATED;
+        return  (
+        <Tag color={received ? "green" : "red"}>
+          {received ? "Yes" : "No"}
+       </Tag>
+       );
+      }
     },
+
     {
       title: "Staff",
       dataIndex: ["staff", "name"],

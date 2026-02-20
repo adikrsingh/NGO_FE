@@ -7,8 +7,8 @@ export interface StaffDonationDashboard {
   dailyDonations: Record<string, number>;
   monthlyDonations: Record<string, number>;
 
-  issueCount: number;     // 80G issued
-  nonIssueCount: number;  // 80G pending
+  pendingAcknowledgements: number;
+  nonIssueCount: number; // For 80G certificates, payment not received, etc.
 
   receiptIssued: number;
   receiptNotIssued: number;

@@ -1,15 +1,72 @@
 .analytics-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  padding: 8px 4px;
 }
 
+/* Header */
 .analytics-header {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
+.analytics-header h2 {
+  margin-bottom: 0;
+}
+
+.analytics-header span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* KPI Cards */
 .analytics-card {
-  display: flex;
-  flex-direction: column;
+  min-height: 120px;
+  padding-top: 4px;
+}
+
+.analytics-card .ant-card-body {
+  padding: 12px 16px;
+}
+.analytics-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Chart Card */
+.analytics-chart-card {
+  height: 100%;
+}
+
+.analytics-chart-card .ant-card-body {
+  padding: 16px;
+}
+
+/* Chart wrapper */
+.analytics-chart-wrapper {
+  height: 300px;
+}
+
+/* Improve Ant Design card titles */
+.ant-card-head-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* Better spacing for grid */
+.ant-row {
+  margin-bottom: 4px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .analytics-card {
+    height: auto;
+  }
+
+  .analytics-chart-wrapper {
+    height: 260px;
+  }
 }
