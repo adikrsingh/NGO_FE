@@ -8,6 +8,7 @@ import "./styles/layout.css";
 import "./styles/form.css";
 import "./styles/buttons.css";
 import "./styles/cards.css";
+import "./styles/dashboardReports.css";
 
 // Create QueryClient instance
 const queryClient = new QueryClient({
