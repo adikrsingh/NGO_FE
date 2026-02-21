@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { addStaff } from "../api/staffApi";
 import Card from "../components/common/Card";
 import { Upload, Button, Select } from "antd";
 import {
@@ -61,11 +62,32 @@ export default function AddStaff() {
     };
 
     try {
+      //TOdo: Handle profilePic upload if needed (currently UI-only)
+      //Todo: call our DB after validation
       setLoading(true);
       await axios.post("http://localhost:8080/api/staff", payload);
 
-      alert("Staff added successfully");
+      // Authentication API call (secondary, non-blocking for DB)
+      const staffPayload = {
+        username: name.replace(/\s+/g, '_').toLowerCase(),
+        email,
+        enabled: true,
+        credentials: [
+          {
+            type: "password",
+            value: "SecurePassword123!", // You may want to generate or prompt for this
+            temporary: false,
+          },
+        ],
+      };
+      try {
+        await addStaff(staffPayload, "mygroup");
+      } catch (authErr) {
+        console.error("Auth API failed", authErr);
+        // Optionally show a warning, but don't block DB success
+      }
 
+      alert("Staff added successfully");
       // reset
       setName("");
       setEmail("");
