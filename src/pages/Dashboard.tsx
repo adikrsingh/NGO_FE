@@ -1,261 +1,193 @@
-    import Layout from "../components/Layout";
-    import StatCard from "../components/StatCard";
-    import NeedsAttention from "../components/dashboard/NeedsAttention";
-    import UserContext from "../components/dashboard/UserContext";
-    import DonationFlowStatus from "../components/dashboard/DonationFlowStatus";
-    import RecentDonations from "../components/dashboard/RecentDonations";
-    import AnalyticsOverview from "../components/dashboard/AnalyticsOverview";
-    import { TotalDonationSummary } from "../types/TotalDonationSummary";
-    import { formatINRCompact } from "../utils/currency";
-    import { StaffDonationDashboard } from "../types/StaffDonationDashboard";
-    import { getTodayKey } from "../utils/date";
-    import { DonorService } from "../api/donorApi";
+import StatCard from "../components/StatCard";
+import NeedsAttention from "../components/dashboard/NeedsAttention";
+import UserContext from "../components/dashboard/UserContext";
+import DonationFlowStatus from "../components/dashboard/DonationFlowStatus";
+import RecentDonations from "../components/dashboard/RecentDonations";
+import AnalyticsOverview from "../components/dashboard/AnalyticsOverview";
+import { TotalDonationSummary } from "../types/TotalDonationSummary";
+import { formatINRCompact } from "../utils/currency";
+import { StaffDonationDashboard } from "../types/StaffDonationDashboard";
+import { getTodayKey } from "../utils/date";
+import { DonorService } from "../api/donorApi";
+import {
+  CreditCard,
+  Calendar,
+  TrendingUp,
+  Award,
+  Users,
+  IndianRupeeIcon,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { DonationService } from "../api/donationApi";
+import { PaidVsPending } from "../types/PaidVsPending";
+import { MonthlyRunRate } from "../types/MonthlyRunRate";
 
+function Dashboard() {
+  const [totalDonationSummary, setTotalDonationSummary] =
+    useState<TotalDonationSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
+  const [staffDashboard, setStaffDashboard] =
+    useState<StaffDonationDashboard | null>(null);
 
+  const { getActiveDonorCount } = DonorService();
 
-    import {
-      CreditCard,
-      Calendar,
-      TrendingUp,
-      Award,
-      Users,
-      IndianRupeeIcon,
-    } from "lucide-react";
+  const [activeDonorCount, setActiveDonorCount] = useState<number | null>(
+    null
+  );
 
+  const [paidVsPending, setPaidVsPending] = useState<PaidVsPending | null>(null);
 
-    import { useEffect, useState } from "react";
-    import { DonationService } from "../api/donationApi";
-    import { PaidVsPending } from "../types/PaidVsPending";
-    import { MonthlyRunRate } from "../types/MonthlyRunRate";
+  // TEMP: hardcoded staff id
+  // TODO: replace with logged-in staff id from auth/JWT
+  const staffId = 2;
 
-    function Dashboard() {
-      const [donations, setDonations] = useState<any[]>([]);
-      const [loading, setLoading] = useState(true);
-      const [error, setError] = useState<string | null>(null);
-      const [totalDonationSummary, setTotalDonationSummary] = useState<TotalDonationSummary | null>(null);
-      const [summaryLoading, setSummaryLoading] = useState(false);
+  const { getTotalDonationSummary, getStaffDonationDashboard, getPaidVsPendingForMonth } =
+    DonationService();
 
-      const [staffDashboard, setStaffDashboard] = useState<StaffDonationDashboard | null>(null);
+  const todayAmount = staffDashboard?.dailyDonations[getTodayKey()] ?? 0;
+  const [monthlyRunRate, setMonthlyRunRate] = useState<MonthlyRunRate | null>(null);
 
-      const { getActiveDonorCount } = DonorService();
+  const { getMonthlyRunRate } = DonationService();
 
-      const [activeDonorCount, setActiveDonorCount] = useState<number | null>(null);
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const year = today.getFullYear();
 
-      const [paidVsPending, setPaidVsPending] = useState<PaidVsPending | null>(null);
+  useEffect(() => {
+    getMonthlyRunRate(staffId, year, month)
+      .then(setMonthlyRunRate)
+      .catch(console.error);
+  }, [staffId, year, month]);
 
+  useEffect(() => {
+    setSummaryLoading(true);
 
+    getTotalDonationSummary(staffId)
+      .then(setTotalDonationSummary)
+      .catch((err) => console.error("Failed to load total donation summary", err))
+      .finally(() => setSummaryLoading(false));
+  }, [staffId]);
 
-      // TEMP: hardcoded staff id
-      // TODO: replace with logged-in staff id from auth/JWT
-      const staffId = 2;
+  useEffect(() => {
+    getStaffDonationDashboard(staffId)
+      .then(setStaffDashboard)
+      .catch((err) => console.error("Failed to load staff dashboard data", err));
+  }, [staffId]);
 
-      const { getTotalDonationSummary, getStaffDonationDashboard, getPaidVsPendingForMonth } = DonationService();
+  useEffect(() => {
+    getActiveDonorCount()
+      .then((res) => setActiveDonorCount(res.activeDonorCount))
+      .catch((err) => console.error("Failed to fetch active donor count", err));
+  }, []);
 
-      const todayAmount = staffDashboard?.dailyDonations[getTodayKey()] ?? 0;
-      const [monthlyRunRate, setMonthlyRunRate] = useState<MonthlyRunRate | null>(null);
+  useEffect(() => {
+    getPaidVsPendingForMonth(staffId)
+      .then(setPaidVsPending)
+      .catch((err) => console.error("Failed to fetch paid vs pending", err));
+  }, [staffId]);
 
-      const { getMonthlyRunRate } = DonationService();
+  return (
+    <>
+      <h1>Dashboard</h1>
 
-      const today = new Date();
-      const [month, setMonth] = useState(today.getMonth() + 1);
-      const [year, setYear] = useState(today.getFullYear());
+      <div className="dashboard-stats">
+        <div className="stats-inner">
+          <div className="cards-row">
+            <StatCard
+              title="Total Donations"
+              value={
+                totalDonationSummary
+                  ? formatINRCompact(totalDonationSummary.totalAmount)
+                  : "—"
+              }
+              subtitle={
+                totalDonationSummary
+                  ? `${totalDonationSummary.donationCount} donations`
+                  : summaryLoading
+                  ? "Loading..."
+                  : "No data"
+              }
+              icon={<IndianRupeeIcon />}
+              iconBg="icon-green"
+              to="/reports/donations"
+            />
 
+            <StatCard
+              title="Paid vs Pending"
+              value={paidVsPending ? formatINRCompact(paidVsPending.paidAmount) : "—"}
+              subtitle={
+                paidVsPending
+                  ? `${formatINRCompact(paidVsPending.pendingAmount)} pending`
+                  : "Loading..."
+              }
+              icon={<CreditCard />}
+              iconBg="icon-blue"
+              to="/reports/payments"
+            />
 
-      useEffect(() => {
-        getMonthlyRunRate(staffId, year, month)
-          .then(setMonthlyRunRate)
-          .catch(console.error);
-      }, [staffId, year, month]);
+            <StatCard
+              title="Today's Collections"
+              value={staffDashboard ? formatINRCompact(todayAmount) : "—"}
+              subtitle="Today's total"
+              icon={<Calendar />}
+              iconBg="icon-purple"
+              to="/reports/today"
+            />
 
+            <StatCard
+              title="Monthly Run Rate"
+              value={monthlyRunRate ? `${monthlyRunRate.runRate.toFixed(0)}%` : "—"}
+              subtitle={
+                monthlyRunRate
+                  ? `${formatINRCompact(monthlyRunRate.paidAmount)} of ${formatINRCompact(
+                      monthlyRunRate.totalAmount
+                    )}`
+                  : "Loading..."
+              }
+              icon={<TrendingUp />}
+              iconBg="icon-orange"
+              to="/reports/monthly"
+            />
 
-      useEffect(() => {
-        setSummaryLoading(true);
-
-        getTotalDonationSummary(staffId)
-          .then(setTotalDonationSummary)
-          .catch((err) =>
-            console.error("Failed to load total donation summary", err)
-          )
-          .finally(() => setSummaryLoading(false));
-      }, [staffId]);
-
-      useEffect(() => {
-        getStaffDonationDashboard(staffId)
-        .then(setStaffDashboard)
-          .catch(err =>
-            console.error("Failed to load staff dashboard data", err)
-          );
-      }, [staffId]);
-
-      useEffect(() => {
-        getActiveDonorCount()
-          .then((res) => setActiveDonorCount(res.activeDonorCount))
-          .catch((err) =>
-            console.error("Failed to fetch active donor count", err)
-          );
-      }, []);
-
-      useEffect(() => {
-        getPaidVsPendingForMonth(staffId)
-          .then(setPaidVsPending)
-          .catch(err =>
-            console.error("Failed to fetch paid vs pending", err)
-          );
-      }, [staffId]);
-
-
-      return (
-        <>
-          <h1>Dashboard</h1>
-
-
-          <div className="dashboard-stats">
-            <div className="stats-inner">
-              <div className="cards-row">
-                <StatCard
-                  title="Total Donations"
-                  value={
-                    totalDonationSummary
-                      ? formatINRCompact(
-                          totalDonationSummary.totalAmount
-                        )
-                      : "—"
-                  }
-                  subtitle={
-                    totalDonationSummary
-                      ? `${totalDonationSummary.donationCount} donations`
-                      : summaryLoading
-                      ? "Loading..."
-                      : "No data"
-                  }
-                  icon={<IndianRupeeIcon />}
-                  iconBg="icon-green"
-                  to="/reports/donations"
-                />
-
-                    <StatCard
-                      title="Paid vs Pending"
-                      value={
-                        paidVsPending
-                          ? formatINRCompact(paidVsPending.paidAmount)
-                          : "—"
-                      }
-                      subtitle={
-                        paidVsPending
-                          ? `${formatINRCompact(paidVsPending.pendingAmount)} pending`
-                          : "Loading..."
-                      }
-                      icon={<CreditCard />}
-                      iconBg="icon-blue"
-                      to="/reports/payments"
-                    />
-
-
-                    <StatCard
-                        title="Today's Collections"
-                        value={
-                          staffDashboard
-                            ? formatINRCompact(todayAmount)
-                            : "—"
-                        }
-                        subtitle="Today's total"
-                        icon={<Calendar />}
-                        iconBg="icon-purple"
-                        to="/reports/today"
-                    />
-
-
-                    <StatCard
-                        title="Monthly Run Rate"
-                        value={
-                          monthlyRunRate
-                            ? `${monthlyRunRate.runRate.toFixed(0)}%`
-                            : "—"
-                        }
-                        subtitle={
-                          monthlyRunRate
-                            ? `${formatINRCompact(
-                                monthlyRunRate.paidAmount
-                              )} of ${formatINRCompact(
-                                monthlyRunRate.totalAmount
-                              )}`
-                            : "Loading..."
-                        }
-                        icon={<TrendingUp />}
-                        iconBg="icon-orange"
-                    />
-
-
-                    <StatCard
-                      title="80G Certificates Pending"
-                      value={
-                        staffDashboard
-                          ? String(staffDashboard.nonIssueCount)
-                          : "—"
-                      }
-                      subtitle={
-                        staffDashboard
-                          ? "Pending certificates"
-                          : "Loading..."
-                      }
-                      icon={<Award />}
-                      iconBg="icon-red"
-                      to="/pending-80g-dashboard"
-                    />
-                    <StatCard
-                      title="Active Donors"
-                      value={
-                        activeDonorCount !== null
-                          ? String(activeDonorCount)
-                          : "—"
-                      }
-                      subtitle="Last 90 days"
-                      icon={<Users />}
-                      iconBg="icon-blue"
-                      to="/donors/active"
-                    />
-              </div>
-            </div>
+            <StatCard
+              title="80G Certificates Pending"
+              value={staffDashboard ? String(staffDashboard.nonIssueCount) : "—"}
+              subtitle={staffDashboard ? "Pending certificates" : "Loading..."}
+              icon={<Award />}
+              iconBg="icon-red"
+              to="/pending-80g-dashboard"
+            />
+            <StatCard
+              title="Active Donors"
+              value={activeDonorCount !== null ? String(activeDonorCount) : "—"}
+              subtitle="Last 90 days"
+              icon={<Users />}
+              iconBg="icon-blue"
+              to="/donors/active"
+            />
           </div>
-        
+        </div>
+      </div>
 
-          <div className="page-container">
-            <div className="grid-2">
-              <NeedsAttention
-                pendingReceipts={staffDashboard?.receiptNotIssued ?? 0}
-                pendingAck={staffDashboard?.pendingAcknowledgements ?? 0}
-              />
-              <UserContext />
-            </div>
+      <div className="page-container">
+        <div className="grid-2">
+          <NeedsAttention
+            pendingReceipts={staffDashboard?.receiptNotIssued ?? 0}
+            pendingAck={staffDashboard?.pendingAcknowledgements ?? 0}
+          />
+          <UserContext />
+        </div>
 
-            <DonationFlowStatus />
+        <DonationFlowStatus />
 
-            <div className="grid-2">
-              <AnalyticsOverview />
-              <RecentDonations />
-            </div>
+        <div className="grid-2">
+          <AnalyticsOverview />
+          <RecentDonations />
+        </div>
+      </div>
+    </>
+  );
+}
 
-            <div style={{ marginTop: "24px" }}>
-              <h2>Recent Donations (Live)</h2>
-
-              {loading && <p>Loading donations...</p>}
-              {error && <p style={{ color: "red" }}>{error}</p>}
-
-              {!loading && !error && donations.length === 0 && (
-                <p>No donations found.</p>
-              )}
-
-              {!loading && !error &&
-                donations.map((d) => (
-                  <div key={d.id} style={{ padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                    <strong>₹{d.amount}</strong> — {d.purpose}
-                  </div>
-                ))}
-            </div>
-          </div>
-        </>
-      );
-    }
-
-    export default Dashboard;
+export default Dashboard;

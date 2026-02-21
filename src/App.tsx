@@ -22,6 +22,7 @@ import Reconciliation from "./pages/Reconcile";
 import AdminReconciliation from "./pages/Reconcile/AdminReconciliation";
 import StaffActions from "./pages/actions/StaffActions";
 import AdminActionMonitoring from "./pages/actions/AdminActionMonitoring";
+import DonationReportSnapshot from "./pages/DonationReportSnapshot";
 
 function App() {
 
@@ -130,10 +131,22 @@ function App() {
         <Route path="/disputedTransaction" element={<DisputedTransaction />} />
         <Route path="/add-staff" element={<AddStaff />} />
 
-        <Route path="/reports/donations" element={<div>Donations Page</div>} />
-        <Route path="/reports/payments" element={<div>Payments Page</div>} />
-        <Route path="/reports/today" element={<div>Today Report</div>} />
-        <Route path="/reports/monthly" element={<div>Monthly Report</div>} />
+        <Route
+          path="/reports/donations"
+          element={<DonationReportSnapshot reportType="donations" />}
+        />
+        <Route
+          path="/reports/payments"
+          element={<DonationReportSnapshot reportType="payments" />}
+        />
+        <Route
+          path="/reports/today"
+          element={<DonationReportSnapshot reportType="today" />}
+        />
+        <Route
+          path="/reports/monthly"
+          element={<DonationReportSnapshot reportType="monthly" />}
+        />
         <Route path="/certificates/80g" element={<div>80G Certificates</div>} />
         <Route path="/donors" element={<div>Donors List</div>} />
 
