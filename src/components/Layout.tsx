@@ -18,6 +18,13 @@ import dayjs from "dayjs";
 
 const { Header, Content, Sider } = Layout;
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+};
+
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
@@ -133,13 +140,16 @@ function AppLayout() {
         }}
       >
         {/* Left */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            The Earth Saviours Foundation
-          </Typography.Title>
-          <Typography.Text type="secondary">
-            Welcome back. Here's your operational snapshot for today.
-          </Typography.Text>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <img src="/tesf-logo.png" alt="TESF logo" style={{ width: 58, height: 58, objectFit: "contain" }} />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              The Earth Saviours Foundation
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              {`${getGreeting()} · Here's your operational snapshot for today.`}
+            </Typography.Text>
+          </div>
         </div>
 
         {/* Right */}

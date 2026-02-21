@@ -64,7 +64,7 @@ const DonationDetailsSection = ({
   useEffect(() => {
     baseApi()
       .get("/donation-categories")
-      .then((res) => setCategories(res.data))
+      .then((res) => setCategories((res.data || []).filter((c: any) => c.isActive !== false)))
       .catch(() => alert("Failed to load donation categories"));
   }, []);
 

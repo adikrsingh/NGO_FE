@@ -63,7 +63,7 @@ export default function Reconciliation() {
     useState<ReconciledTransaction | null>(null);
 
   const [donations, setDonations] = useState<Donation[]>([]);
-  const [searchKeyword, setSearchKeyword] = useState(""); // Donation search
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [selectedDonation, setSelectedDonation] =
     useState<Donation | null>(null);
 
@@ -74,10 +74,7 @@ export default function Reconciliation() {
   const [donationPageSize] = useState(5);
   const [donationTotal, setDonationTotal] = useState(0);
 
-  // 🔹 NEW reconciliation search state
-  const [reconSearchKeyword, setReconSearchKeyword] = useState("");
-
-  /* ================= FETCH RECONCILIATION (NORMAL LOAD) ================= */
+  /* ================= FETCH RECONCILIATION ================= */
 
   const fetchReconciliation = async (pageNumber = 0) => {
     try {
@@ -104,36 +101,6 @@ export default function Reconciliation() {
     }
   };
 
-  /* ================= FETCH RECONCILIATION (SEARCH) ================= */
-
-  const searchReconciliation = async (
-    pageNumber = 0,
-    keyword: string
-  ) => {
-    try {
-      setLoading(true);
-
-      const res = await api.get(
-        `/reconciliation/transactions/staff/${staffId}/search?page=${pageNumber}&size=${pageSize}&keyword=${keyword}`
-      );
-
-      setData(res.data.content || []);
-      setTotal(res.data.totalElements || 0);
-      setPage(pageNumber);
-    } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.detailedMessage ||
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to search reconciliation data";
-
-      messageApi.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchReconciliation();
   }, []);
@@ -145,9 +112,7 @@ export default function Reconciliation() {
       setSearching(true);
 
       const res = await api.get(
-        `/donations/search?staffId=${staffId}&keyword=${
-          searchKeyword || ""
-        }&page=${page}&size=${donationPageSize}`
+        `/donations/search?staffId=${staffId}&keyword=${searchKeyword || ""}&page=${page}&size=${donationPageSize}`
       );
 
       setDonations(res.data.content || []);
@@ -196,13 +161,7 @@ export default function Reconciliation() {
       );
 
       setClaimModalOpen(false);
-
-      // Refresh based on search state
-      if (reconSearchKeyword) {
-        searchReconciliation(page, reconSearchKeyword);
-      } else {
-        fetchReconciliation(page);
-      }
+      fetchReconciliation(page);
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.detailedMessage ||
@@ -217,7 +176,21 @@ export default function Reconciliation() {
     }
   };
 
-  /* ================= TABLE COLUMNS ================= */
+  /* ================= STATUS TAG ================= */
+
+  const renderStatus = (status: ReconciliationStatus) => {
+    if (status === "SETTLED") {
+      return <Tag color="green">Settled</Tag>;
+    }
+
+    return (
+      <Tag color="orange" icon={<ExclamationCircleOutlined />}>
+        Unclaimed
+      </Tag>
+    );
+  };
+
+  /* ================= RECONCILIATION TABLE ================= */
 
   const reconciliationColumns: ColumnsType<ReconciledTransaction> = [
     {
@@ -261,6 +234,9 @@ export default function Reconciliation() {
     },
   ];
 
+  /* ================= DONATION TABLE ================= */
+
+
   const donationColumns = [
     {
       title: "Donor Name",
@@ -293,44 +269,19 @@ export default function Reconciliation() {
       {contextHolder}
 
       <Card title="Unclaimed Transactions">
-        <Space direction="vertical" style={{ width: "100%" }}>
-          <Input.Search
-            placeholder="Search by Transaction ID, Mode, Bank Details"
-            enterButton="Search"
-            allowClear
-            value={reconSearchKeyword}
-            onChange={(e) =>
-              setReconSearchKeyword(e.target.value)
-            }
-            onSearch={(value) => {
-              setReconSearchKeyword(value);
-              searchReconciliation(0, value);
-            }}
-            style={{ maxWidth: 400 }}
-          />
-
-          <Table
-            rowKey="id"
-            loading={loading}
-            columns={reconciliationColumns}
-            dataSource={data}
-            pagination={{
-              current: page + 1,
-              pageSize: pageSize,
-              total: total,
-              onChange: (newPage) => {
-                if (reconSearchKeyword) {
-                  searchReconciliation(
-                    newPage - 1,
-                    reconSearchKeyword
-                  );
-                } else {
-                  fetchReconciliation(newPage - 1);
-                }
-              },
-            }}
-          />
-        </Space>
+        <Table
+          rowKey="id"
+          loading={loading}
+          columns={reconciliationColumns}
+          dataSource={data}
+          pagination={{
+            current: page + 1,
+            pageSize: pageSize,
+            total: total,
+            onChange: (newPage) =>
+              fetchReconciliation(newPage - 1),
+          }}
+        />
       </Card>
 
       <Modal
@@ -344,15 +295,10 @@ export default function Reconciliation() {
       >
         <Space direction="vertical" style={{ width: "100%" }}>
           <Card size="small">
-            <Typography.Text strong>
-              Bank Amount:
-            </Typography.Text>{" "}
-            ₹
-            {selectedTransaction?.transactionAmount?.toLocaleString()}
+            <Typography.Text strong>Bank Amount:</Typography.Text>{" "}
+            ₹{selectedTransaction?.transactionAmount?.toLocaleString()}
             <br />
-            <Typography.Text strong>
-              Bank Date:
-            </Typography.Text>{" "}
+            <Typography.Text strong>Bank Date:</Typography.Text>{" "}
             {selectedTransaction?.transactionDate}
           </Card>
 
@@ -360,9 +306,7 @@ export default function Reconciliation() {
             placeholder="Search by donor name or amount"
             enterButton="Search"
             value={searchKeyword}
-            onChange={(e) =>
-              setSearchKeyword(e.target.value)
-            }
+            onChange={(e) => setSearchKeyword(e.target.value)}
             onSearch={() => fetchDonations(0)}
             loading={searching}
           />

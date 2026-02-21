@@ -102,8 +102,8 @@ export default function RecentDonations() {
   return (
     <Card title="Recent Donations">
      <CustomTable<RecentContribution>
-        rowKey={(record) =>
-          `${record.donationDate}-${record.donorName}-${record.amount}`
+        rowKey={(record, index) =>
+          `${record.donationDate}-${record.donorName}-${record.amount}-${index}`
         }
         columns={columns}
         data={data}

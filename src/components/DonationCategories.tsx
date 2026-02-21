@@ -21,6 +21,7 @@ import {
 import { useApi } from "../api/useApi";
 
 const { Title, Text } = Typography;
+const DESCRIPTION_WORD_LIMIT = 30;
 
 /* ================= TYPES ================= */
 
@@ -269,8 +270,22 @@ export default function DonationCategories() {
             <Input />
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
-            <Input.TextArea rows={3} />
+          <Form.Item
+            label="Description"
+            name="description"
+            rules={[
+              {
+                validator: (_, value) => {
+                  const words = String(value || "").trim().split(/\s+/).filter(Boolean);
+                  if (words.length <= DESCRIPTION_WORD_LIMIT) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error(`Description can have up to ${DESCRIPTION_WORD_LIMIT} words only`));
+                },
+              },
+            ]}
+          >
+            <Input.TextArea rows={3} showCount maxLength={220} placeholder="Short description (max 30 words)" />
           </Form.Item>
 
           <Form.Item

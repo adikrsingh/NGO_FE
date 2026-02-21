@@ -23,7 +23,6 @@ export default function AddDonation() {
   const [savedDonation, setSavedDonation] = useState<any>(null);
   const [savedFormData, setSavedFormData] = useState<any>(null);
 
-  // ---------------- SAVE DONATION ----------------
   const handleSubmit = async (formData: {
     donorId: number;
     donorName?: string;
@@ -38,7 +37,6 @@ export default function AddDonation() {
       deliveryMethod: string;
     };
   }) => {
-
     setIsAddingDonation(true);
 
     try {
@@ -61,7 +59,6 @@ export default function AddDonation() {
       setSavedDonation({ id: donationId });
       setSavedFormData(formData);
       setShowSuccessModal(true);
-
     } catch (error) {
       console.error(error);
       alert("Failed to add donation");
@@ -70,13 +67,11 @@ export default function AddDonation() {
     }
   };
 
-  // ---------------- OPEN RECEIPT MODAL ----------------
   const handleOpenReceipt = () => {
     setShowSuccessModal(false);
     setShowReceiptModal(true);
   };
 
-  // ---------------- UPLOAD RECEIPT ----------------
   const handleReceiptConfirm = async (receiptHtml: string) => {
     if (!savedDonation) return;
 
@@ -86,13 +81,8 @@ export default function AddDonation() {
       uploadData.append("file", blob, "receipt.html");
       uploadData.append("category", "RECEIPT");
 
-      await baseApi().post(
-        `/donationsfiles/${savedDonation.id}/files`,
-        uploadData
-      );
-
+      await baseApi().post(`/donationsfiles/${savedDonation.id}/files`, uploadData);
       alert("Receipt saved successfully.");
-
     } catch (error) {
       console.error(error);
       alert("Failed to upload receipt");
@@ -101,58 +91,42 @@ export default function AddDonation() {
 
   return (
     <div className="add-donation-wrapper">
-      <h2>Add New Donation</h2>
+      <div className="add-donation-head">
+        <h2>Add New Donation</h2>
+        <p>Capture donations faster with guided sections and compliant documentation.</p>
+      </div>
 
-      <DonationForm
-        onSubmit={handleSubmit}
-        isSubmitting={isAddingDonation}
-      />
+      <DonationForm onSubmit={handleSubmit} isSubmitting={isAddingDonation} />
 
       {isAddingDonation && <p>Saving donation...</p>}
 
-      {/* RECEIPT MODAL */}
       {showReceiptModal && (
         <ReceiptModal
           visible={showReceiptModal}
-          donorName={savedFormData?.donorName}
-          amount={savedFormData?.amount}
-          date={savedFormData?.date}
-          paymentMode={savedFormData?.paymentMode}
           donationId={savedDonation?.id}
           onClose={() => setShowReceiptModal(false)}
         />
       )}
 
-      {/* SUCCESS MODAL */}
       {showSuccessModal && (
         <div className="donation-modal-overlay">
           <div className="donation-modal">
+            <div className="donation-modal-badge">Saved</div>
             <h3>✅ Donation Created Successfully</h3>
-            <p>What would you like to do next?</p>
+            <p>Your donation entry is saved. Choose the next step.</p>
 
             <div className="donation-modal-actions">
-
-              <button
-                className="donation-btn donation-btn-primary"
-                onClick={() => window.location.reload()}
-              >
+              <button className="donation-btn donation-btn-primary" onClick={() => window.location.reload()}>
                 Add New Donation
               </button>
 
-              <button
-                className="donation-btn donation-btn-secondary"
-                onClick={handleOpenReceipt}
-              >
+              <button className="donation-btn donation-btn-secondary" onClick={handleOpenReceipt}>
                 Share Receipt
               </button>
 
-              <button
-                className="donation-btn donation-btn-secondary"
-                onClick={() => navigate("/donations")}
-              >
+              <button className="donation-btn donation-btn-secondary" onClick={() => navigate("/donations")}>
                 Go Back to Donation List
               </button>
-
             </div>
           </div>
         </div>

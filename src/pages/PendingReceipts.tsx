@@ -221,19 +221,6 @@ export default function PendingReceipts() {
         selectedDonation && (
           <ReceiptModal
             visible={showReceiptModal}
-            donorName={
-              selectedDonation.donor?.name
-            }
-            amount={
-              selectedDonation.amount
-            }
-            date={
-              selectedDonation.donationDate
-            }
-            paymentMode={
-              selectedDonation.donationSource ||
-              "Cash"
-            }
             donationId={
               selectedDonation.id
             }

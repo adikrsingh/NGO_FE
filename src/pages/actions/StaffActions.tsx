@@ -263,11 +263,7 @@ export default function StaffActions() {
       {selectedDonation && (
         <ReceiptModal
           visible={receiptVisible}
-          donationId={selectedDonationId}
-          donorName={selectedDonation.donor.name}
-          amount={selectedDonation.amount}
-          date={selectedDonation.donationDate}
-          paymentMode={selectedDonation.donationSource}
+          donationId={selectedDonationId ?? undefined}
           onClose={() => {
             setReceiptVisible(false);
             setSelectedDonation(null);

@@ -57,30 +57,30 @@ function App() {
   //   }
   // }, []);
 
-  // const exchangeCode = async (code) => {
-  //   try {
-  //     const response = await fetch(
-  //       "https://auth-central-production.up.railway.app/authcentral/token",
-  //       {
-  //         method: "POST",
-  //         credentials: "include",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({ 
-  //           tenantName: "testthree",
-  //           authCode: code }),
-  //       }
-  //     );
-  //     const data = await response.json();
-  //     console.log("Tokens received:", data);
-  //     // OPTIONAL: remove code from URL
-  //     window.history.replaceState({}, document.title, "/");
+  const exchangeCode = async (code) => {
+    try {
+      const response = await fetch(
+        "https://auth-central-production.up.railway.app/authcentral/token",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            tenantName: "testthree",
+            authCode: code }),
+        }
+      );
+      const data = await response.json();
+      console.log("Tokens received:", data);
+      // OPTIONAL: remove code from URL
+      window.history.replaceState({}, document.title, "/");
 
-  //   } catch (error) {
-  //     console.error("Error exchanging code:", error);
-  //   }
-  // };
+    } catch (error) {
+      console.error("Error exchanging code:", error);
+    }
+  };
   
   const role = localStorage.getItem("role") || "STAFF";
 

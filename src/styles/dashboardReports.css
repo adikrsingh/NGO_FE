@@ -95,3 +95,10 @@
     align-items: flex-start;
   }
 }
+
+
+.refresh-note {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+}

@@ -1,100 +1,140 @@
-    import { useEffect, useState } from "react";
-    import { Card, Alert, Button, Space, Statistic, Divider } from "antd";
-    import {
-    FileTextOutlined,
-    ClockCircleOutlined,
-    SendOutlined,
-    } from "@ant-design/icons";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Button, Card, Col, Row, Statistic, Tag } from "antd";
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  FileDoneOutlined,
+  MailOutlined,
+  SendOutlined,
+} from "@ant-design/icons";
+import { DonationService } from "../api/donationApi";
+import { StaffDonationDashboard } from "../types/StaffDonationDashboard";
+import { PaidVsPending } from "../types/PaidVsPending";
+import { useNavigate } from "react-router-dom";
 
-    // import Pending80G from "./Pending80G";
+export default function Pending80GPage() {
+  const staffId = 2;
+  const navigate = useNavigate();
+  const { getStaffDonationDashboard, getPaidVsPendingForMonth, getPendingReceiptDonations, getPendingAcknowledgementSummary } = DonationService();
 
+  const [dashboard, setDashboard] = useState<StaffDonationDashboard | null>(null);
+  const [payments, setPayments] = useState<PaidVsPending | null>(null);
+  const [pendingReceiptsList, setPendingReceiptsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [ackPendingCount, setAckPendingCount] = useState<number>(0);
 
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      getStaffDonationDashboard(staffId),
+      getPaidVsPendingForMonth(staffId),
+      getPendingReceiptDonations(),
+      getPendingAcknowledgementSummary(),
+    ])
+      .then(([staffData, paymentData, pendingReceipts, ackSummary]) => {
+        setDashboard(staffData);
+        setPayments(paymentData);
+        setPendingReceiptsList(pendingReceipts || []);
+        setAckPendingCount(Number(ackSummary?.pendingCount ?? ackSummary?.pendingAcknowledgements ?? staffData?.pendingAcknowledgements ?? 0));
+      })
+      .catch((err) => console.error("Failed to load 80G summary", err))
+      .finally(() => setLoading(false));
+  }, [staffId]);
 
-    import { DonationService } from "../api/donationApi";
-    import { Pending80GSummary } from "../types/Pending80GSummary";
+  const receiptIssued = dashboard?.receiptIssued || 0;
+  const pendingAcknowledgements = ackPendingCount;
+  const receiptNotIssued = pendingReceiptsList.length || dashboard?.receiptNotIssued || 0;
+  const receiptSentPaymentPending = dashboard?.nonIssueCount || 0;
+  const pendingPaymentAmount = payments?.pendingAmount || 0;
+  const totalPaymentAmount = (payments?.paidAmount || 0) + (payments?.pendingAmount || 0);
 
-    export default function Pending80GPage() {
-    const [summary, setSummary] = useState<Pending80GSummary | null>(null);
-    const [loading, setLoading] = useState(false);
-    // const { getPending80GSummary } = DonationService();
-    // useEffect(() => {
-    //     setLoading(true);
-    //     getPending80GSummary()
-    //     .then(setSummary)
-    //     .catch(console.error)
-    //     .finally(() => setLoading(false));
-    // }, []);
+  const followupCount = receiptNotIssued + receiptSentPaymentPending;
 
-    return (
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <h1>80G Certificates – Action Center</h1>
-
-        {/* ===== Summary Section ===== */}
-        <Card loading={loading} style={{ marginBottom: 24 }}>
-            <Space size="large">
-            <Statistic
-                title="Pending Certificates"
-                value={summary?.pendingCount ?? "—"}
-                prefix={<FileTextOutlined />}
-            />
-
-            <Statistic
-                title="Overdue (> 7 days)"
-                value={summary?.overdueCount ?? "—"}
-                valueStyle={{ color: "#cf1322" }}
-                prefix={<ClockCircleOutlined />}
-            />
-
-            <Statistic
-                title="Pending This Month"
-                value={summary?.pendingCount ?? "—"}
-                suffix="(current)"
-            />
-            </Space>
-        </Card>
-
-        {/* ===== Attention / Insight Box ===== */}
-        {summary && summary.overdueCount > 0 && (
-            <Alert
-            type="warning"
-            showIcon
-            style={{ marginBottom: 24 }}
-            message="Attention Required"
-            description={
-                <>
-                {summary.overdueCount} donation(s) have been pending for more
-                than <strong>7 days</strong>.  
-                Please issue 80G certificates to avoid compliance delays.
-                </>
-            }
-            />
-        )}
-
-        {/* ===== Quick Actions ===== */}
-        <Card style={{ marginBottom: 24 }}>
-            <Space>
-            <Button
-                type="primary"
-                icon={<SendOutlined />}
-                disabled={!summary || summary.pendingCount === 0}
-            >
-                Send All Eligible 80G
-            </Button>
-
-            <Button>
-                View Issued Certificates
-            </Button>
-
-            <Button type="link">
-                What is an 80G Certificate?
-            </Button>
-            </Space>
-        </Card>
-
-        <Divider />
-
-        {/* ===== Existing Pending80G Component ===== */}
-        {/* <Pending80G /> */}
-        </div>
-    );
+  const eligibleByReceipt = useMemo(() => {
+    if (!dashboard || !payments) {
+      return 0;
     }
+
+    return Math.max(0, receiptIssued);
+  }, [dashboard, payments, receiptIssued]);
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <h1>80G & Acknowledgement Center</h1>
+      <p style={{ marginTop: -8 }}>
+        Manage receipt follow-ups, LOA communication and tax-compliance actions in one place.
+      </p>
+
+      <Alert
+        style={{ marginBottom: 16 }}
+        type="info"
+        showIcon
+        message="Compliance view"
+        description="Track receipts not yet issued, payments not yet completed, and acknowledgement follow-ups to keep donor communication clean and timely."
+      />
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="Eligible via Receipt"
+              value={eligibleByReceipt}
+              prefix={<CheckCircleOutlined />}
+            />
+            <Tag color="green" style={{ marginTop: 8 }}>
+              Receipt processed
+            </Tag>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="Ack Pending"
+              value={pendingAcknowledgements}
+              prefix={<MailOutlined />}
+            />
+            <Tag color="gold" style={{ marginTop: 8 }}>
+              Needs follow-up
+            </Tag>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="Receipt Not Issued"
+              value={receiptNotIssued}
+              prefix={<ClockCircleOutlined />}
+            />
+            <Tag color="red" style={{ marginTop: 8 }}>
+              Priority queue
+            </Tag>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card loading={loading}>
+            <Statistic title="Payment Pending" value={pendingPaymentAmount} prefix="₹" precision={2} />
+            <Tag color="blue" style={{ marginTop: 8 }}>
+              of ₹{totalPaymentAmount.toLocaleString()} total amount
+            </Tag>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card style={{ marginTop: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Actions</h3>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Button icon={<SendOutlined />} type="primary" disabled={pendingAcknowledgements === 0} onClick={() => navigate("/pending-ack")}>
+            Send Pending Acknowledgements
+          </Button>
+          <Button icon={<FileDoneOutlined />} disabled={receiptNotIssued === 0} onClick={() => navigate("/pending-receipts")}>
+            Issue Remaining Receipts ({receiptNotIssued})
+          </Button>
+          <Button type="link">Follow-up Queue: {followupCount}</Button>
+        </div>
+      </Card>
+    </div>
+  );
+}

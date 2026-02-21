@@ -6,10 +6,11 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Tooltip,
   Legend,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 import { DonationService } from "../api/donationApi";
 import { formatINRCompact } from "../utils/currency";
 import { StaffDonationDashboard } from "../types/StaffDonationDashboard";
@@ -23,6 +24,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Tooltip,
   Legend
 );
@@ -40,7 +42,7 @@ const reportConfig: Record<
   },
   payments: {
     title: "Paid vs Pending Snapshot",
-    subtitle: "Track cleared payments versus pending pipeline over the recent trend.",
+    subtitle: "Clear split of settled amount versus pipeline amount.",
     valueLabel: "Paid Amount",
   },
   today: {
@@ -50,7 +52,7 @@ const reportConfig: Record<
   },
   monthly: {
     title: "Monthly Run Rate Snapshot",
-    subtitle: "Measure progress against this month's expected collection plan.",
+    subtitle: "How much of this month’s expected target has already been realized.",
     valueLabel: "Run Rate",
   },
 };
@@ -73,6 +75,7 @@ export default function DonationReportSnapshot({ reportType }: { reportType: Rep
   const [paidVsPending, setPaidVsPending] = useState<PaidVsPending | null>(null);
   const [monthlyRunRate, setMonthlyRunRate] = useState<MonthlyRunRate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -94,6 +97,7 @@ export default function DonationReportSnapshot({ reportType }: { reportType: Rep
         setStaffDashboard(staffData);
         setPaidVsPending(paymentData);
         setMonthlyRunRate(runRateData);
+        setLastRefreshedAt(new Date());
       } catch (error) {
         console.error("Failed to load report snapshot", error);
       } finally {
@@ -125,30 +129,36 @@ export default function DonationReportSnapshot({ reportType }: { reportType: Rep
   const trendLabels = trendEntries.map(([date]) => dayjs(date).format("MMM D"));
   const trendValues = trendEntries.map(([, amount]) => amount);
 
+  const todayKey = dayjs().format("YYYY-MM-DD");
+  const todayCollection = staffDashboard?.dailyDonations[todayKey] || 0;
+
   const snapshotPrimaryValue = useMemo(() => {
     switch (reportType) {
       case "donations":
         return summary ? formatINRCompact(summary.totalAmount) : "—";
       case "payments":
         return paidVsPending ? formatINRCompact(paidVsPending.paidAmount) : "—";
-      case "today": {
-        const todayKey = dayjs().format("YYYY-MM-DD");
-        return staffDashboard
-          ? formatINRCompact(staffDashboard.dailyDonations[todayKey] || 0)
-          : "—";
-      }
+      case "today":
+        return formatINRCompact(todayCollection);
       case "monthly":
         return monthlyRunRate ? `${monthlyRunRate.runRate.toFixed(1)}%` : "—";
       default:
         return "—";
     }
-  }, [monthlyRunRate, paidVsPending, reportType, staffDashboard, summary]);
+  }, [monthlyRunRate, paidVsPending, reportType, summary, todayCollection]);
+
+  const paymentDataset = [paidVsPending?.paidAmount || 0, paidVsPending?.pendingAmount || 0];
+  const monthlyDataset = [monthlyRunRate?.paidAmount || 0, monthlyRunRate?.totalAmount || 0];
 
   return (
     <div className="report-snapshot-page">
       <header className="report-snapshot-header">
         <h2>{reportConfig[reportType].title}</h2>
         <p>{reportConfig[reportType].subtitle}</p>
+        <p className="refresh-note">
+          Auto-refresh: every 45 seconds
+          {lastRefreshedAt ? ` · Last sync ${dayjs(lastRefreshedAt).format("hh:mm:ss A")}` : ""}
+        </p>
       </header>
 
       <div className="report-kpi-row">
@@ -157,64 +167,153 @@ export default function DonationReportSnapshot({ reportType }: { reportType: Rep
           <strong>{loading ? "Loading..." : snapshotPrimaryValue}</strong>
         </article>
 
-        <article className="report-kpi-card">
-          <span>Total Transactions</span>
-          <strong>{summary ? summary.donationCount : "—"}</strong>
-        </article>
+        {reportType === "payments" && (
+          <>
+            <article className="report-kpi-card">
+              <span>Pending Amount</span>
+              <strong>{paidVsPending ? formatINRCompact(paidVsPending.pendingAmount) : "—"}</strong>
+            </article>
+            <article className="report-kpi-card">
+              <span>Collection Efficiency</span>
+              <strong>
+                {paidVsPending
+                  ? `${((paidVsPending.paidAmount / Math.max(1, paidVsPending.paidAmount + paidVsPending.pendingAmount)) * 100).toFixed(1)}%`
+                  : "—"}
+              </strong>
+            </article>
+          </>
+        )}
+
+        {reportType === "monthly" && (
+          <>
+            <article className="report-kpi-card">
+              <span>Paid This Month</span>
+              <strong>{monthlyRunRate ? formatINRCompact(monthlyRunRate.paidAmount) : "—"}</strong>
+            </article>
+            <article className="report-kpi-card">
+              <span>Monthly Target</span>
+              <strong>{monthlyRunRate ? formatINRCompact(monthlyRunRate.totalAmount) : "—"}</strong>
+            </article>
+          </>
+        )}
+
+        {(reportType === "donations" || reportType === "today") && (
+          <>
+            <article className="report-kpi-card">
+              <span>Total Transactions</span>
+              <strong>{summary ? summary.donationCount : "—"}</strong>
+            </article>
+            <article className="report-kpi-card">
+              <span>Pending Acknowledgements</span>
+              <strong>{staffDashboard ? staffDashboard.pendingAcknowledgements : "—"}</strong>
+            </article>
+          </>
+        )}
 
         <article className="report-kpi-card">
-          <span>Pending Amount</span>
-          <strong>
-            {paidVsPending ? formatINRCompact(paidVsPending.pendingAmount) : "—"}
-          </strong>
-        </article>
-
-        <article className="report-kpi-card">
-          <span>Pending Acknowledgements</span>
-          <strong>{staffDashboard ? staffDashboard.pendingAcknowledgements : "—"}</strong>
+          <span>Receipt Issued</span>
+          <strong>{staffDashboard ? staffDashboard.receiptIssued : "—"}</strong>
         </article>
       </div>
 
       <section className="report-chart-card">
         <div className="report-chart-header">
-          <h3>Last 30 days donation trend</h3>
-          <p>Auto-refreshes every 45 seconds for near real-time visibility.</p>
+          <h3>
+            {reportType === "payments"
+              ? "Paid vs Pending split"
+              : reportType === "monthly"
+              ? "Monthly paid vs target"
+              : "Last 30 days donation trend"}
+          </h3>
+          <p>Data reflects currently available dashboard APIs.</p>
         </div>
 
         <div className="report-chart-wrapper">
-          <Line
-            options={{
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    label: (ctx) => formatINRCompact(Number(ctx.raw || 0)),
+          {reportType === "payments" && (
+            <Bar
+              options={{
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => formatINRCompact(Number(ctx.raw || 0)),
+                    },
                   },
                 },
-              },
-              scales: {
-                y: {
-                  ticks: {
-                    callback: (value) => formatINRCompact(Number(value)),
+              }}
+              data={{
+                labels: ["Paid", "Pending"],
+                datasets: [
+                  {
+                    data: paymentDataset,
+                    backgroundColor: ["#16a34a", "#f59e0b"],
+                  },
+                ],
+              }}
+            />
+          )}
+
+          {reportType === "monthly" && (
+            <Bar
+              options={{
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => formatINRCompact(Number(ctx.raw || 0)),
+                    },
                   },
                 },
-              },
-            }}
-            data={{
-              labels: trendLabels,
-              datasets: [
-                {
-                  data: trendValues,
-                  borderColor: "#dc2626",
-                  backgroundColor: "rgba(220,38,38,0.16)",
-                  fill: true,
-                  tension: 0.36,
-                  pointRadius: 2,
+              }}
+              data={{
+                labels: ["Paid", "Target"],
+                datasets: [
+                  {
+                    data: monthlyDataset,
+                    backgroundColor: ["#2563eb", "#cbd5e1"],
+                  },
+                ],
+              }}
+            />
+          )}
+
+          {(reportType === "donations" || reportType === "today") && (
+            <Line
+              options={{
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => formatINRCompact(Number(ctx.raw || 0)),
+                    },
+                  },
                 },
-              ],
-            }}
-          />
+                scales: {
+                  y: {
+                    ticks: {
+                      callback: (value) => formatINRCompact(Number(value)),
+                    },
+                  },
+                },
+              }}
+              data={{
+                labels: trendLabels,
+                datasets: [
+                  {
+                    data: trendValues,
+                    borderColor: "#dc2626",
+                    backgroundColor: "rgba(220,38,38,0.16)",
+                    fill: true,
+                    tension: 0.36,
+                    pointRadius: 2,
+                  },
+                ],
+              }}
+            />
+          )}
         </div>
       </section>
     </div>

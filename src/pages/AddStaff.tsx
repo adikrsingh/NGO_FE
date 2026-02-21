@@ -1,102 +1,125 @@
-import { useState } from "react";
-import axios from "axios";
+import { useMemo, useState } from "react";
 import { addStaff } from "../api/staffApi";
 import Card from "../components/common/Card";
 import { Upload, Button, Select } from "antd";
-import {
-  UploadOutlined,
-  UserAddOutlined,
-} from "@ant-design/icons";
+import { useApi } from "../api/useApi";
+import { UploadOutlined, UserAddOutlined } from "@ant-design/icons";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
 
-const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+// const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 
 export default function AddStaff() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [designation, setDesignation] = useState("");
-  const [pan, setPan] = useState("");
+//   const [pan, setPan] = useState("");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState<Gender | undefined>();
-  const [panError, setPanError] = useState<string | null>(null);
+//   const [panError, setPanError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // UI-only profile pic
   const [profilePic, setProfilePic] = useState<File | null>(null);
+  const [savedProfilePicUrl, setSavedProfilePicUrl] = useState<string | null>(null);
+  const { baseApi } = useApi();
 
   const handlePanChange = (value: string) => {
-    const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    setPan(formatted);
-    setPanError(null);
-  };
+      const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      setPan(formatted);
+      setPanError(null);
+    };
 
-  const handlePanBlur = () => {
-    if (!pan) {
-      setPanError("PAN is required");
-      return;
-    }
-    if (!PAN_REGEX.test(pan)) {
-      setPanError("Invalid PAN format (ABCDE1234F)");
-    }
-  };
+    const handlePanBlur = () => {
+      if (!pan) {
+        setPanError("PAN is required");
+        return;
+      }
+      if (!PAN_REGEX.test(pan)) {
+        setPanError("Invalid PAN format (ABCDE1234F)");
+      }
+    };
+
+  const profilePreviewUrl = useMemo(
+    () => (profilePic ? URL.createObjectURL(profilePic) : null),
+    [profilePic]
+  );
 
   const handleAddStaff = async () => {
-    if (!name || !email || !designation || !pan || !phone || !gender) {
+    if (!name || !email || !designation || !phone || !gender) {
       alert("Please fill all required fields");
       return;
     }
 
-    if (!PAN_REGEX.test(pan)) {
-      setPanError("Invalid PAN format (ABCDE1234F)");
+//    if (!PAN_REGEX.test(pan)) {
+//          setPanError("Invalid PAN format (ABCDE1234F)");
+//          return;
+//     }
+
+    if (!profilePic) {
+      alert("Please upload a profile picture");
       return;
     }
 
-    const payload = {
+    const staffPayload = {
       name,
       email,
       designation,
-      pan,
       phone,
       gender,
+      // pan intentionally removed as requested.
+      // pan,
     };
 
-    try {
-      //TOdo: Handle profilePic upload if needed (currently UI-only)
-      //Todo: call our DB after validation
-      setLoading(true);
-      await axios.post("http://localhost:8080/api/staff", payload);
+    const formData = new FormData();
+    formData.append(
+      "staff",
+      new Blob([JSON.stringify(staffPayload)], {
+        type: "application/json",
+      })
+    );
+    formData.append("profilePic", profilePic);
 
-      // Authentication API call (secondary, non-blocking for DB)
-      const staffPayload = {
-        username: name.replace(/\s+/g, '_').toLowerCase(),
+    try {
+      setLoading(true);
+      const response = await baseApi({
+        "Content-Type": "multipart/form-data",
+      }).post("/staff", formData);
+
+      const createdStaffId = response?.data?.staffId;
+      const baseUrl = baseApi().defaults.baseURL || "";
+      if (createdStaffId) {
+        setSavedProfilePicUrl(`${baseUrl}/staff/${createdStaffId}/profile-pic?ts=${Date.now()}`);
+      }
+
+      const authPayload = {
+        username: name.replace(/\s+/g, "_").toLowerCase(),
         email,
         enabled: true,
         credentials: [
           {
             type: "password",
-            value: "SecurePassword123!", // You may want to generate or prompt for this
+            value: "SecurePassword123!",
             temporary: false,
           },
         ],
       };
+
       try {
-        await addStaff(staffPayload, "mygroup");
+        await addStaff(authPayload, "mygroup");
       } catch (authErr) {
         console.error("Auth API failed", authErr);
         // Optionally show a warning, but don't block DB success
       }
 
       alert("Staff added successfully");
-      // reset
       setName("");
       setEmail("");
       setDesignation("");
-      setPan("");
+//       setPan("");
       setPhone("");
       setGender(undefined);
       setProfilePic(null);
-      setPanError(null);
+//       setPanError(null);
+      setSavedProfilePicUrl(null);
     } catch (err) {
       console.error("Failed to add staff", err);
       alert("Failed to add staff");
@@ -108,7 +131,6 @@ export default function AddStaff() {
   return (
     <Card title="Add New Staff">
       <div className="staff-form-wrapper">
-        {/* LEFT: Form */}
         <div className="staff-form-left">
           <div className="staff-form-grid">
             <div className="staff-form-group">
@@ -166,9 +188,7 @@ export default function AddStaff() {
               <label>Designation *</label>
               <input
                 value={designation}
-                onChange={(e) =>
-                  setDesignation(e.target.value)
-                }
+                onChange={(e) => setDesignation(e.target.value)}
                 placeholder="Enter Designation"
               />
             </div>
@@ -191,9 +211,7 @@ export default function AddStaff() {
 
         {/* RIGHT: Profile Pic (UI only) */}
         <div className="staff-form-right">
-          <div className="staff-form-upload-title">
-            Profile Picture
-          </div>
+          <div className="staff-form-upload-title">Profile Picture</div>
 
           <div className="staff-form-upload-action">
             <Upload
@@ -206,19 +224,31 @@ export default function AddStaff() {
                 setProfilePic(file);
                 return false;
               }}
+              showUploadList={false}
               maxCount={1}
             >
-              <Button icon={<UploadOutlined />}>
-                Upload Profile Pic
-              </Button>
+              <Button icon={<UploadOutlined />}>Upload Profile Pic</Button>
             </Upload>
           </div>
 
-          <div className="staff-form-hint">
-            JPG / PNG only. Max size 5 MB.
-          </div>
-        </div>
+          <div className="staff-form-hint">JPG / PNG only. Max size 5 MB.</div>
 
+          {profilePreviewUrl && (
+            <img
+              src={profilePreviewUrl}
+              alt="Selected profile"
+              style={{ marginTop: 12, width: 140, height: 140, objectFit: "cover", borderRadius: 8 }}
+            />
+          )}
+
+          {!profilePreviewUrl && savedProfilePicUrl && (
+            <img
+              src={savedProfilePicUrl}
+              alt="Saved profile"
+              style={{ marginTop: 12, width: 140, height: 140, objectFit: "cover", borderRadius: 8 }}
+            />
+          )}
+        </div>
       </div>
 
       <Button
