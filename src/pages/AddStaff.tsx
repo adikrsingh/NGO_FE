@@ -22,21 +22,21 @@ export default function AddStaff() {
   const [savedProfilePicUrl, setSavedProfilePicUrl] = useState<string | null>(null);
   const { baseApi } = useApi();
 
-  const handlePanChange = (value: string) => {
-      const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      setPan(formatted);
-      setPanError(null);
-    };
-
-    const handlePanBlur = () => {
-      if (!pan) {
-        setPanError("PAN is required");
-        return;
-      }
-      if (!PAN_REGEX.test(pan)) {
-        setPanError("Invalid PAN format (ABCDE1234F)");
-      }
-    };
+//   const handlePanChange = (value: string) => {
+//       const formatted = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+//       setPan(formatted);
+//       setPanError(null);
+//     };
+//
+//     const handlePanBlur = () => {
+//       if (!pan) {
+//         setPanError("PAN is required");
+//         return;
+//       }
+//       if (!PAN_REGEX.test(pan)) {
+//         setPanError("Invalid PAN format (ABCDE1234F)");
+//       }
+//     };
 
   const profilePreviewUrl = useMemo(
     () => (profilePic ? URL.createObjectURL(profilePic) : null),
